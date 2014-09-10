@@ -15,6 +15,19 @@ category:	Network
 synopsis:	Push XML from/to client to/from server over XMPP or HTTP
 description:
 
+extra-source-files:
+    examples/TestPusher.hs
+    examples/testXmpp.hs
+    examples/testXmppTls.hs
+    examples/testHttpPullCl.hs
+    examples/testHttpPullSv.hs
+    examples/testHttpPullTlsCl.hs
+    examples/testHttpPullTlsSv.hs
+    examples/testHttpPushT.hs
+    examples/testHttpPushE.hs
+    examples/testHttpPushTlsT.hs
+    examples/testHttpPushTlsE.hs
+
 source-repository	head
     type:	git
     location:	git://github.com/YoshikuniJujo/xml-push.git

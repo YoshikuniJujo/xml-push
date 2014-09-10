@@ -19,8 +19,6 @@ import Data.HandleLike
 import Data.Pipe
 import Data.Pipe.Flow
 import Data.Pipe.TChan
-import Data.X509
-import Data.X509.CertificateStore
 import Text.XML.Pipe
 import Network.XMPiPe.Core.C2S.Client
 import Network.PeyoTLS.TChan.Client
@@ -30,17 +28,13 @@ import qualified Data.ByteString as BS
 
 import Network.XmlPush
 import Network.XmlPush.Xmpp.Common
+import Network.XmlPush.Tls
 
 data XmppTls h = XmppTls
 	(XmlNode -> Bool)
 	(TChan (Maybe BS.ByteString))
 	(Pipe () Mpi (HandleMonad h) ())
 	(TChan (Either BS.ByteString XmlNode))
-
-data TlsArgs = TlsArgs {
-	certificateAuthority :: CertificateStore,
-	keyChain :: [(CertSecretKey, CertificateChain)]
-	}
 
 instance XmlPusher XmppTls where
 	type NumOfHandle XmppTls = One

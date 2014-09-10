@@ -47,6 +47,8 @@ library
         Network.XmlPush.HttpPull.Client, Network.XmlPush.HttpPull.Server
         Network.XmlPush.HttpPull.Tls.Client, Network.XmlPush.HttpPull.Tls.Server,
         Network.XmlPush.HttpPush, Network.XmlPush.HttpPush.Tls
+    other-modules:
+        Network.XmlPush.Xmpp.Common
     build-depends:
         base == 4.*, peyotls == 0.1.*, simple-pipe == 0.0.*, xml-pipe == 0.0.*,
         handle-like == 0.1.*, monad-control == 0.3.*, transformers-base == 0.4.*,

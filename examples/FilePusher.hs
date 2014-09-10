@@ -10,7 +10,7 @@ import Data.Pipe
 import Data.Pipe.ByteString
 import Text.XML.Pipe
 
-import XmlPusher
+import Network.XmlPush
 
 data SimplePusher h = SimplePusher
 	(Pipe () XmlNode (HandleMonad h) ())

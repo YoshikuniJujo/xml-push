@@ -1,4 +1,5 @@
-import XmlPusher
+import TestPusher
+import FilePusher
 import System.IO
 
 main :: IO ()

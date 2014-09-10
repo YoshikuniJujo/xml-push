@@ -17,16 +17,18 @@ description:
 
 extra-source-files:
     examples/TestPusher.hs
-    examples/testXmpp.hs
-    examples/testXmppTls.hs
-    examples/testHttpPullCl.hs
-    examples/testHttpPullSv.hs
-    examples/testHttpPullTlsCl.hs
-    examples/testHttpPullTlsSv.hs
-    examples/testHttpPushT.hs
-    examples/testHttpPushE.hs
-    examples/testHttpPushTlsT.hs
-    examples/testHttpPushTlsE.hs
+    examples/FilePusher.hs
+    examples/simple.hs
+    examples/xmpp.hs
+    examples/xmppTls.hs
+    examples/httpPullCl.hs
+    examples/httpPullSv.hs
+    examples/httpPullTlsCl.hs
+    examples/httpPullTlsSv.hs
+    examples/httpPushT.hs
+    examples/httpPushE.hs
+    examples/httpPushTlsT.hs
+    examples/httpPushTlsE.hs
 
 source-repository	head
     type:	git

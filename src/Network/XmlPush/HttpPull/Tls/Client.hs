@@ -1,9 +1,8 @@
 {-# LANGUAGE OverloadedStrings, TypeFamilies, ScopedTypeVariables, FlexibleContexts,
 	PackageImports #-}
 
-module HttpPullTlsCl (
-	HttpPullTlsCl, HttpPullTlsClArgs(..), One(..), testPusher,
-	) where
+module Network.XmlPush.HttpPull.Tls.Client (
+	HttpPullTlsCl, HttpPullTlsClArgs(..)) where
 
 import Prelude hiding (filter)
 
@@ -29,7 +28,7 @@ import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
 import qualified Data.ByteString.Lazy as LBS
 
-import TestPusher
+import Network.XmlPush
 
 data HttpPullTlsCl h = HttpPullTlsCl
 	(Pipe () XmlNode (HandleMonad h) ())

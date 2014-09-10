@@ -4,7 +4,8 @@ import Control.Monad
 import System.IO
 import Text.XML.Pipe
 import Network
-import HttpPushTls
+import Network.XmlPush.HttpPush.Tls
+import TestPusher
 
 main :: IO ()
 main = do

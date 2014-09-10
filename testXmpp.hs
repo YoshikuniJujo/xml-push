@@ -9,7 +9,9 @@ import Network.XMPiPe.Core.C2S.Client
 
 import qualified Data.ByteString.Char8 as BSC
 
-import Xmpp
+import Network.XmlPush
+import Network.XmlPush.Xmpp
+import TestPusher
 
 main :: IO ()
 main = do

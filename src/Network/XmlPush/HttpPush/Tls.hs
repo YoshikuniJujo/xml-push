@@ -2,9 +2,7 @@
 	TypeFamilies, FlexibleContexts,
 	PackageImports #-}
 
-module HttpPushTls (
-	HttpPushTls, HttpPushTlsArgs(..), Two(..), testPusher,
-	) where
+module Network.XmlPush.HttpPush.Tls (HttpPushTls, HttpPushTlsArgs(..)) where
 
 import Prelude hiding (filter)
 
@@ -32,7 +30,7 @@ import qualified Data.ByteString.Lazy as LBS
 import qualified Network.PeyoTLS.Client as Cl
 import qualified Network.PeyoTLS.Server as Sv
 
-import TestPusher
+import Network.XmlPush
 
 data HttpPushTls h = HttpPushTls {
 	needReply :: TVar Bool,

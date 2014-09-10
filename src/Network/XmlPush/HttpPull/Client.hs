@@ -1,9 +1,7 @@
 {-# LANGUAGE TypeFamilies, FlexibleContexts,
 	PackageImports #-}
 
-module HttpPullCl (
-	HttpPullCl, HttpPullClArgs(..), One(..), testPusher,
-	) where
+module Network.XmlPush.HttpPull.Client (HttpPullCl, HttpPullClArgs(..)) where
 
 import Prelude hiding (filter)
 
@@ -24,7 +22,7 @@ import Network.TigHTTP.Types
 
 import qualified Data.ByteString.Lazy as LBS
 
-import TestPusher
+import Network.XmlPush
 
 data HttpPullCl h = HttpPullCl
 	(Pipe () XmlNode (HandleMonad h) ())

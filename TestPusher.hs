@@ -10,7 +10,7 @@ import Data.Pipe.ByteString
 import System.IO
 import Text.XML.Pipe
 
-import XmlPusher
+import Network.XmlPush
 
 testPusher :: XmlPusher xp =>
 	xp Handle -> NumOfHandle xp Handle -> PusherArg xp -> IO ()

@@ -6,7 +6,8 @@ import System.IO
 import Text.XML.Pipe
 import Network
 
-import HttpPullSv
+import Network.XmlPush.HttpPull.Server
+import TestPusher
 
 main :: IO ()
 main = do

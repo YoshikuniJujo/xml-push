@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeFamilies, FlexibleContexts, PackageImports #-}
 
-module XmlPusher (XmlPusher(..), Zero(..), One(..), Two(..)) where
+module Network.XmlPush (XmlPusher(..), Zero(..), One(..), Two(..)) where
 
 import "monads-tf" Control.Monad.Error
 import Control.Monad.Base

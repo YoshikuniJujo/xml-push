@@ -10,7 +10,8 @@ import Network.PeyoTLS.ReadFile
 
 import qualified Data.ByteString.Char8 as BSC
 
-import XmppTls
+import Network.XmlPush.Xmpp.Tls
+import TestPusher
 
 main :: IO ()
 main = do

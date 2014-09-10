@@ -1,9 +1,7 @@
 {-# LANGUAGE OverloadedStrings, TupleSections, TypeFamilies, FlexibleContexts,
 	PackageImports #-}
 
-module HttpPush (
-	HttpPush, HttpPushArgs(..), Two(..), testPusher,
-	) where
+module Network.XmlPush.HttpPush (HttpPush, HttpPushArgs(..)) where
 
 import Prelude hiding (filter)
 
@@ -25,7 +23,7 @@ import Network.TigHTTP.Types
 
 import qualified Data.ByteString.Lazy as LBS
 
-import TestPusher
+import Network.XmlPush
 
 data HttpPush h = HttpPush {
 	needReply :: TVar Bool,

@@ -51,6 +51,7 @@ library
         Network.XmlPush.Tls
         Network.XmlPush.Xmpp.Common
         Network.XmlPush.HttpPull.Client.Common
+        Network.XmlPush.HttpPull.Server.Common
     build-depends:
         base == 4.*, peyotls == 0.1.*, simple-pipe == 0.0.*, xml-pipe == 0.0.*,
         handle-like == 0.1.*, monad-control == 0.3.*, transformers-base == 0.4.*,

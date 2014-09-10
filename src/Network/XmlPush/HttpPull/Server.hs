@@ -22,6 +22,7 @@ import Network.TigHTTP.Types
 import qualified Data.ByteString.Lazy as LBS
 
 import Network.XmlPush
+import Network.XmlPush.HttpPull.Server.Common
 
 data HttpPullSv h = HttpPullSv
 	(Pipe () XmlNode (HandleMonad h) ())

@@ -26,6 +26,7 @@ import "crypto-random" Crypto.Random
 import qualified Data.ByteString.Lazy as LBS
 
 import Network.XmlPush
+import Network.XmlPush.HttpPull.Server.Common
 
 data HttpPullTlsSv h = HttpPullTlsSv
 	(Pipe () XmlNode (HandleMonad h) ())

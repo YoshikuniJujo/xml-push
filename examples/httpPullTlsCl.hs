@@ -3,6 +3,7 @@
 import System.IO
 import Text.XML.Pipe
 import Network
+import Network.PeyoTLS.ReadFile
 
 import Network.XmlPush.HttpPull.Tls.Client
 import TestPusher
@@ -10,9 +11,14 @@ import TestPusher
 main :: IO ()
 main = do
 	h <- connectTo "localhost" $ PortNumber 443
-	testPusher (undefined :: HttpPullTlsCl Handle) (One h)
-		(HttpPullClArgs "localhost" 443 "/"
-			(XmlNode (nullQ "poll") [] [] []) pendingQ drtn gtPth)
+	ca <- readCertificateStore ["certs/cacert.sample_pem"]
+	k <- readKey "certs/yoshikuni.sample_key"
+	c <- readCertificateChain ["certs/yoshikuni.sample_crt"]
+	testPusher (undefined :: HttpPullTlsCl Handle) (One h) (
+		HttpPullClArgs "localhost" 443 "/"
+			(XmlNode (nullQ "poll") [] [] []) pendingQ drtn gtPth,
+		TlsArgs ca [(k, c)]
+		)
 
 pendingQ :: XmlNode -> Bool
 pendingQ (XmlNode (_, "nothing") _ [] []) = False

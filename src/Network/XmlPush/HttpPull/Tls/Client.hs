@@ -2,7 +2,7 @@
 	PackageImports #-}
 
 module Network.XmlPush.HttpPull.Tls.Client (
-	HttpPullTlsCl, HttpPullClArgs(..)) where
+	HttpPullTlsCl, HttpPullClArgs(..), TlsArgs(..)) where
 
 import Prelude hiding (filter)
 
@@ -14,7 +14,6 @@ import Data.HandleLike
 import Data.Pipe
 import Data.Pipe.TChan
 import Text.XML.Pipe
-import Network.PeyoTLS.ReadFile
 import Network.PeyoTLS.TChan.Client
 import "crypto-random" Crypto.Random
 
@@ -23,6 +22,7 @@ import qualified Data.ByteString.Char8 as BSC
 
 import Network.XmlPush
 import Network.XmlPush.HttpPull.Client.Common
+import Network.XmlPush.Tls
 
 data HttpPullTlsCl h = HttpPullTlsCl
 	(Pipe () XmlNode (HandleMonad h) ())
@@ -30,7 +30,7 @@ data HttpPullTlsCl h = HttpPullTlsCl
 
 instance XmlPusher HttpPullTlsCl where
 	type NumOfHandle HttpPullTlsCl = One
-	type PusherArg HttpPullTlsCl = HttpPullClArgs
+	type PusherArg HttpPullTlsCl = (HttpPullClArgs, TlsArgs)
 	generate = makeHttpPull
 	readFrom (HttpPullTlsCl r _) = r
 	writeTo (HttpPullTlsCl _ w) = w
@@ -73,13 +73,13 @@ getBS i n = do
 	else (bs `BS.append`) <$> getBS i (n - BS.length bs)
 
 makeHttpPull :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
-	One h -> HttpPullClArgs -> HandleMonad h (HttpPullTlsCl h)
-makeHttpPull (One h) (HttpPullClArgs hn pn fp pl ip gd gp) = do
+	One h -> (HttpPullClArgs, TlsArgs) -> HandleMonad h (HttpPullTlsCl h)
+makeHttpPull (One h)
+	(HttpPullClArgs hn pn fp pl ip gd gp, TlsArgs ca kcs) = do
 	dr <- liftBase . atomically $ newTVar Nothing
 	(inc, otc) <- do
-		ca <- liftBase $ readCertificateStore ["certs/cacert.sample_pem"]
 		(g :: SystemRNG) <- liftBase $ cprgCreate <$> createEntropyPool
 		(ic, oc) <- open' h "localhost"
-			["TLS_RSA_WITH_AES_128_CBC_SHA"] [] ca g
+			["TLS_RSA_WITH_AES_128_CBC_SHA"] kcs ca g
 		liftBase $ talkC (TChanHandle ic oc) hn pn fp gp pl ip dr gd
 	return $ HttpPullTlsCl (fromTChan inc) (toTChan otc)

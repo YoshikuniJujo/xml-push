@@ -2,7 +2,8 @@
 	TypeFamilies, FlexibleContexts,
 	PackageImports #-}
 
-module Network.XmlPush.HttpPush.Tls (HttpPushTls, HttpPushArgs(..)) where
+module Network.XmlPush.HttpPush.Tls (
+	HttpPushTls, HttpPushArgs(..), tlsArgsCl) where
 
 import Prelude hiding (filter)
 
@@ -18,6 +19,8 @@ import Data.HandleLike
 import Data.Pipe
 import Data.Pipe.Flow
 import Data.Pipe.TChan
+import Data.X509
+import Data.X509.CertificateStore
 import Text.XML.Pipe
 import Network.TigHTTP.Server
 import Network.PeyoTLS.ReadFile
@@ -30,6 +33,11 @@ import qualified Network.PeyoTLS.Server as Sv
 
 import Network.XmlPush
 import Network.XmlPush.HttpPush.Common
+import Network.XmlPush.Tls.Client as TC
+import Network.XmlPush.Tls.Server as TS
+
+tlsArgsCl :: CertificateStore -> [(CertSecretKey, CertificateChain)] -> TC.TlsArgs
+tlsArgsCl = TC.TlsArgs
 
 data HttpPushTls h = HttpPushTls {
 	needReply :: TVar Bool,
@@ -40,7 +48,7 @@ data HttpPushTls h = HttpPushTls {
 
 instance XmlPusher HttpPushTls where
 	type NumOfHandle HttpPushTls = Two
-	type PusherArg HttpPushTls = HttpPushArgs
+	type PusherArg HttpPushTls = (HttpPushArgs, TC.TlsArgs)
 	generate (Two ch sh) = makeHttpPushTls ch sh
 	readFrom hp = fromTChans [clientReadChan hp, serverReadChan hp] =$=
 		setNeedReply (needReply hp)
@@ -52,23 +60,24 @@ instance XmlPusher HttpPushTls where
 			(const True, clientWriteChan hp) ]
 
 makeHttpPushTls :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
-	h -> h -> HttpPushArgs -> HandleMonad h (HttpPushTls h)
-makeHttpPushTls ch sh (HttpPushArgs hn pn pt gp wr) = do
+	h -> h -> (HttpPushArgs, TC.TlsArgs) -> HandleMonad h (HttpPushTls h)
+makeHttpPushTls ch sh (HttpPushArgs hn pn pt gp wr, TC.TlsArgs ca kcs) = do
 	v <- liftBase . atomically $ newTVar False
-	(ci, co) <- clientC ch hn pn pt gp
+	(ci, co) <- clientC ch hn pn pt gp ca kcs
 	(si, so) <- talk wr sh
 	return $ HttpPushTls v ci co si so
 
 clientC :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	h -> String -> Int -> FilePath -> (XmlNode -> FilePath) ->
+	CertificateStore -> [(CertSecretKey, CertificateChain)] ->
 	HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
-clientC h hn pn pt gp = do
+clientC h hn pn pt gp ca kcs = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
-	ca <- liftBase $ readCertificateStore ["certs/cacert.sample_pem"]
+--	ca <- liftBase $ readCertificateStore ["certs/cacert.sample_pem"]
 	(g :: SystemRNG) <- liftBase $ cprgCreate <$> createEntropyPool
 	void . liftBaseDiscard forkIO . (`Cl.run` g) $ do
-		t <- Cl.open' h "localhost" ["TLS_RSA_WITH_AES_128_CBC_SHA"] [] ca
+		t <- Cl.open' h "localhost" ["TLS_RSA_WITH_AES_128_CBC_SHA"] kcs ca
 		runPipe_ $ fromTChan otc
 			=$= filter isJust
 			=$= convert fromJust

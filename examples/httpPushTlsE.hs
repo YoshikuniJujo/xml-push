@@ -3,17 +3,21 @@
 import System.IO
 import Text.XML.Pipe
 import Network
+import Network.PeyoTLS.ReadFile
 
 import Network.XmlPush.HttpPush.Tls
 import TestPusher
 
 main :: IO ()
 main = do
+	ca <- readCertificateStore ["certs/cacert.sample_pem"]
 	ch <- connectTo "localhost" $ PortNumber 80
 	soc <- listenOn $ PortNumber 8080
 	(sh, _, _) <- accept soc
-	testPusher (undefined :: HttpPushTls Handle) (Two ch sh)
-		(HttpPushArgs "localhost" 80 "" gtPth wntRspns)
+	testPusher (undefined :: HttpPushTls Handle) (Two ch sh) (
+		HttpPushArgs "localhost" 80 "" gtPth wntRspns,
+		tlsArgsCl ca []
+		)
 
 wntRspns :: XmlNode -> Bool
 wntRspns (XmlNode (_, "monologue") _ [] []) = False

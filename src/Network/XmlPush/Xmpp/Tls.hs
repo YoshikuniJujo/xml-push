@@ -51,7 +51,7 @@ makeXmppTls :: (
 	ValidateHandle h, MonadBaseControl IO (HandleMonad h),
 	MonadError (HandleMonad h), Error (ErrorType (HandleMonad h))
 	) => One h -> (XmppArgs, TlsArgs) -> HandleMonad h (XmppTls h)
-makeXmppTls (One h) (XmppArgs ms wr inr me ps you, TlsArgs ca kcs) = do
+makeXmppTls (One h) (XmppArgs ms wr inr me ps you, TlsArgs cs ca kcs) = do
 	nr <- liftBase $ atomically newTChan
 	wc <- liftBase $ atomically newTChan
 	(g :: SystemRNG) <- liftBase $ cprgCreate <$> createEntropyPool
@@ -61,7 +61,7 @@ makeXmppTls (One h) (XmppArgs ms wr inr me ps you, TlsArgs ca kcs) = do
 			("username", un), ("authcid", un), ("password", ps),
 			("cnonce", cn) ]
 	runPipe_ $ fromHandleLike h =$= starttls "localhost" =$= toHandleLike h
-	(inc, otc) <- open' h "localhost" ["TLS_RSA_WITH_AES_128_CBC_SHA"] kcs ca g'
+	(inc, otc) <- open' h "localhost" cs kcs ca g'
 	(`evalStateT` ss) . runPipe_ $ fromTChan inc =$= sasl d ms =$= toTChan otc
 	(Just ns, _fts) <- runWriterT . runPipe $ fromTChan inc
 		=$= bind d rsc

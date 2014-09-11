@@ -20,7 +20,8 @@ main = do
 		ch <- connectTo "localhost" $ PortNumber 8080
 		testPusher (undefined :: HttpPushTls Handle) (Two ch sh) (
 			HttpPushArgs "localhost" 8080 "" gtPth wntRspns,
-			tlsArgsCl ca [], tlsArgsSv Nothing [(k', c')] )
+			tlsArgsCl ["TLS_RSA_WITH_AES_128_CBC_SHA"] ca [],
+			tlsArgsSv Nothing [(k', c')] )
 
 wntRspns :: XmlNode -> Bool
 wntRspns (XmlNode (_, "monologue") _ [] []) = False

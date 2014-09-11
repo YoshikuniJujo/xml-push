@@ -75,11 +75,10 @@ getBS i n = do
 makeHttpPull :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	One h -> (HttpPullClArgs, TlsArgs) -> HandleMonad h (HttpPullTlsCl h)
 makeHttpPull (One h)
-	(HttpPullClArgs hn pn fp pl ip gd gp, TlsArgs ca kcs) = do
+	(HttpPullClArgs hn pn fp pl ip gd gp, TlsArgs cs ca kcs) = do
 	dr <- liftBase . atomically $ newTVar Nothing
 	(inc, otc) <- do
 		(g :: SystemRNG) <- liftBase $ cprgCreate <$> createEntropyPool
-		(ic, oc) <- open' h "localhost"
-			["TLS_RSA_WITH_AES_128_CBC_SHA"] kcs ca g
+		(ic, oc) <- open' h "localhost" cs kcs ca g
 		liftBase $ talkC (TChanHandle ic oc) hn pn fp gp pl ip dr gd
 	return $ HttpPullTlsCl (fromTChan inc) (toTChan otc)

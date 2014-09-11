@@ -17,13 +17,12 @@ import Data.Pipe
 import Data.Pipe.Flow
 import Data.Pipe.TChan
 import Text.XML.Pipe
-import Network.TigHTTP.Client
 import Network.TigHTTP.Server
-import Network.TigHTTP.Types
 
 import qualified Data.ByteString.Lazy as LBS
 
 import Network.XmlPush
+import Network.XmlPush.HttpPush.Common
 
 data HttpPush h = HttpPush {
 	needReply :: TVar Bool,
@@ -31,14 +30,6 @@ data HttpPush h = HttpPush {
 	clientWriteChan :: TChan (Maybe XmlNode),
 	serverReadChan :: TChan (XmlNode, Bool),
 	serverWriteChan :: TChan (Maybe XmlNode) }
-
-data HttpPushArgs = HttpPushArgs {
-	domainName :: String,
-	portNumber :: Int,
-	path :: FilePath,
-	getPath :: XmlNode -> FilePath,
-	wantResponse :: XmlNode -> Bool
-	}
 
 instance XmlPusher HttpPush where
 	type NumOfHandle HttpPush = Two
@@ -52,10 +43,6 @@ instance XmlPusher HttpPush where
 		return [
 			(const nr, serverWriteChan hp),
 			(const True, clientWriteChan hp) ]
-
-setNeedReply :: MonadBase IO m => TVar Bool -> Pipe (a, Bool) a m ()
-setNeedReply nr = await >>= maybe (return ()) (\(x, b) ->
-	lift (liftBase . atomically $ writeTVar nr b) >> yield x >> setNeedReply nr)
 
 makeHttpPush :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	h -> h -> HttpPushArgs -> HandleMonad h (HttpPush h)
@@ -79,19 +66,6 @@ clientC h hn pn pt gp = do
 		=$= toTChan inc
 	return (inc, otc)
 
-clientLoop :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
-	h -> String -> Int -> FilePath -> (XmlNode -> FilePath) ->
-	Pipe XmlNode XmlNode (HandleMonad h) ()
-clientLoop h hn pn pt gp = (await >>=) . maybe (return ()) $ \n -> do
-	r <- lift . request h $ post hn pn (pt ++ "/" ++ gp n)
-		(Nothing, LBS.fromChunks [xmlString [n]])
-	return ()
-		=$= responseBody r
-		=$= xmlEvent
-		=$= convert fromJust
-		=$= (xmlNode [] >> return ())
-	clientLoop h hn pn pt gp
-
 talk :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	(XmlNode -> Bool) ->
 	h -> HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
@@ -111,15 +85,3 @@ talk wr h = do
 				Just n -> LBS.fromChunks [xmlString [n]]
 				_ -> "")
 	return (inc, otc)
-
-checkReply :: MonadBase IO m => (XmlNode -> Bool) -> TChan (Maybe XmlNode) ->
-	Pipe XmlNode (XmlNode, Bool) m ()
-checkReply wr o = (await >>=) . maybe (return ()) $ \n ->
-	if wr n
-	then yield (n, True) >> checkReply wr o
-	else do	lift (liftBase . atomically $ writeTChan o Nothing)
-		yield (n, False)
-		checkReply wr o
-
-responseP :: HandleLike h => LBS.ByteString -> Response Pipe h
-responseP = response

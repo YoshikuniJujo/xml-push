@@ -2,7 +2,7 @@
 	TypeFamilies, FlexibleContexts,
 	PackageImports #-}
 
-module Network.XmlPush.HttpPush.Tls (HttpPushTls, HttpPushTlsArgs(..)) where
+module Network.XmlPush.HttpPush.Tls (HttpPushTls, HttpPushArgs(..)) where
 
 import Prelude hiding (filter)
 
@@ -19,9 +19,7 @@ import Data.Pipe
 import Data.Pipe.Flow
 import Data.Pipe.TChan
 import Text.XML.Pipe
-import Network.TigHTTP.Client
 import Network.TigHTTP.Server
-import Network.TigHTTP.Types
 import Network.PeyoTLS.ReadFile
 import Network.PeyoTLS.Client (ValidateHandle)
 import "crypto-random" Crypto.Random
@@ -31,6 +29,7 @@ import qualified Network.PeyoTLS.Client as Cl
 import qualified Network.PeyoTLS.Server as Sv
 
 import Network.XmlPush
+import Network.XmlPush.HttpPush.Common
 
 data HttpPushTls h = HttpPushTls {
 	needReply :: TVar Bool,
@@ -39,17 +38,9 @@ data HttpPushTls h = HttpPushTls {
 	serverReadChan :: TChan (XmlNode, Bool),
 	serverWriteChan :: TChan (Maybe XmlNode) }
 
-data HttpPushTlsArgs = HttpPushTlsArgs {
-	domainName :: String,
-	portNumber :: Int,
-	path :: FilePath,
-	getPath :: XmlNode -> FilePath,
-	wantResponse :: XmlNode -> Bool
-	}
-
 instance XmlPusher HttpPushTls where
 	type NumOfHandle HttpPushTls = Two
-	type PusherArg HttpPushTls = HttpPushTlsArgs
+	type PusherArg HttpPushTls = HttpPushArgs
 	generate (Two ch sh) = makeHttpPushTls ch sh
 	readFrom hp = fromTChans [clientReadChan hp, serverReadChan hp] =$=
 		setNeedReply (needReply hp)
@@ -60,13 +51,9 @@ instance XmlPusher HttpPushTls where
 			(const nr, serverWriteChan hp),
 			(const True, clientWriteChan hp) ]
 
-setNeedReply :: MonadBase IO m => TVar Bool -> Pipe (a, Bool) a m ()
-setNeedReply nr = await >>= maybe (return ()) (\(x, b) ->
-	lift (liftBase . atomically $ writeTVar nr b) >> yield x >> setNeedReply nr)
-
 makeHttpPushTls :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
-	h -> h -> HttpPushTlsArgs -> HandleMonad h (HttpPushTls h)
-makeHttpPushTls ch sh (HttpPushTlsArgs hn pn pt gp wr) = do
+	h -> h -> HttpPushArgs -> HandleMonad h (HttpPushTls h)
+makeHttpPushTls ch sh (HttpPushArgs hn pn pt gp wr) = do
 	v <- liftBase . atomically $ newTVar False
 	(ci, co) <- clientC ch hn pn pt gp
 	(si, so) <- talk wr sh
@@ -89,19 +76,6 @@ clientC h hn pn pt gp = do
 			=$= convert (, False)
 			=$= toTChan inc
 	return (inc, otc)
-
-clientLoop :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
-	h -> String -> Int -> FilePath -> (XmlNode -> FilePath) ->
-	Pipe XmlNode XmlNode (HandleMonad h) ()
-clientLoop h hn pn pt gp = (await >>=) . maybe (return ()) $ \n -> do
-	r <- lift . request h $ post hn pn (pt ++ "/" ++ gp n)
-		(Nothing, LBS.fromChunks [xmlString [n]])
-	return ()
-		=$= responseBody r
-		=$= xmlEvent
-		=$= convert fromJust
-		=$= (xmlNode [] >> return ())
-	clientLoop h hn pn pt gp
 
 talk :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	(XmlNode -> Bool) ->
@@ -127,15 +101,3 @@ talk wr h = do
 					Just n -> LBS.fromChunks [xmlString [n]]
 					_ -> "")
 	return (inc, otc)
-
-checkReply :: MonadBase IO m => (XmlNode -> Bool) -> TChan (Maybe XmlNode) ->
-	Pipe XmlNode (XmlNode, Bool) m ()
-checkReply wr o = (await >>=) . maybe (return ()) $ \n ->
-	if wr n
-	then yield (n, True) >> checkReply wr o
-	else do	lift . liftBase . atomically $ writeTChan o Nothing
-		yield (n, False)
-		checkReply wr o
-
-responseP :: HandleLike h => LBS.ByteString -> Response Pipe h
-responseP = response

@@ -22,7 +22,7 @@ import qualified Data.ByteString.Char8 as BSC
 
 import Network.XmlPush
 import Network.XmlPush.HttpPull.Client.Common
-import Network.XmlPush.Tls
+import Network.XmlPush.Tls.Client
 
 data HttpPullTlsCl h = HttpPullTlsCl
 	(Pipe () XmlNode (HandleMonad h) ())

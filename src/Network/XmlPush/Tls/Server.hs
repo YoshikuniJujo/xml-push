@@ -1,4 +1,4 @@
-module Network.XmlPush.Tls (
+module Network.XmlPush.Tls.Server (
 	TlsArgs(..)
 	) where
 
@@ -7,6 +7,6 @@ import Data.X509.CertificateStore
 import Network.PeyoTLS.Client
 
 data TlsArgs = TlsArgs {
-	certificateAuthority :: CertificateStore,
+	certificateAuthority :: Maybe CertificateStore,
 	keyChain :: [(CertSecretKey, CertificateChain)]
 	}

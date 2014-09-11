@@ -28,7 +28,7 @@ import qualified Data.ByteString as BS
 
 import Network.XmlPush
 import Network.XmlPush.Xmpp.Common
-import Network.XmlPush.Tls
+import Network.XmlPush.Tls.Client
 
 data XmppTls h = XmppTls
 	(XmlNode -> Bool)

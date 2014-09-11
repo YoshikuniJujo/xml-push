@@ -48,7 +48,8 @@ library
         Network.XmlPush.HttpPull.Tls.Client, Network.XmlPush.HttpPull.Tls.Server
         Network.XmlPush.HttpPush, Network.XmlPush.HttpPush.Tls
     other-modules:
-        Network.XmlPush.Tls
+        Network.XmlPush.Tls.Client
+        Network.XmlPush.Tls.Server
         Network.XmlPush.Xmpp.Common
         Network.XmlPush.HttpPull.Client.Common
         Network.XmlPush.HttpPull.Server.Common

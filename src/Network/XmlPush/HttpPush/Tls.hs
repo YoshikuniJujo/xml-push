@@ -40,8 +40,8 @@ tlsArgsCl :: [Cl.CipherSuite] -> CertificateStore ->
 	[(CertSecretKey, CertificateChain)] -> TC.TlsArgs
 tlsArgsCl = TC.TlsArgs
 
-tlsArgsSv :: Maybe CertificateStore -> [(CertSecretKey, CertificateChain)] ->
-	TS.TlsArgs
+tlsArgsSv :: [Cl.CipherSuite] -> Maybe CertificateStore ->
+	[(CertSecretKey, CertificateChain)] -> TS.TlsArgs
 tlsArgsSv = TS.TlsArgs
 
 data HttpPushTls h = HttpPushTls {
@@ -68,10 +68,10 @@ makeHttpPushTls :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	h -> h -> (HttpPushArgs, TC.TlsArgs, TS.TlsArgs) ->
 	HandleMonad h (HttpPushTls h)
 makeHttpPushTls ch sh (HttpPushArgs hn pn pt gp wr,
-	TC.TlsArgs cs ca kcs, TS.TlsArgs mca' kcs') = do
+	TC.TlsArgs cs ca kcs, TS.TlsArgs cs' mca' kcs') = do
 	v <- liftBase . atomically $ newTVar False
 	(ci, co) <- clientC ch hn pn pt gp cs ca kcs
-	(si, so) <- talk wr sh mca' kcs'
+	(si, so) <- talk wr sh cs' mca' kcs'
 	return $ HttpPushTls v ci co si so
 
 clientC :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
@@ -95,14 +95,15 @@ clientC h hn pn pt gp cs ca kcs = do
 
 talk :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	(XmlNode -> Bool) -> h ->
+	[Sv.CipherSuite] ->
 	Maybe CertificateStore -> [(CertSecretKey, CertificateChain)] ->
 	HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
-talk wr h mca kcs = do
+talk wr h cs mca kcs = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
 	g <- liftBase (cprgCreate <$> createEntropyPool :: IO SystemRNG)
 	void . liftBaseDiscard forkIO . (`Sv.run` g) $ do
-		t <- Sv.open h ["TLS_RSA_WITH_AES_128_CBC_SHA"] kcs mca
+		t <- Sv.open h cs kcs mca
 		runPipe_ . forever $ do
 			req <- lift $ getRequest t
 			requestBody req

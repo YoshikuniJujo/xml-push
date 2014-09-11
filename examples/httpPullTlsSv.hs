@@ -18,7 +18,8 @@ main = do
 	forever $ do
 		(h, _, _) <- accept soc
 		void . forkIO $ testPusher (undefined :: HttpPullTlsSv Handle)
-			(One h) (isPoll, endPoll, TlsArgs Nothing [(k, c)])
+			(One h) (isPoll, endPoll, TlsArgs
+				["TLS_RSA_WITH_AES_128_CBC_SHA"] Nothing [(k, c)])
 
 isPoll :: XmlNode -> Bool
 isPoll (XmlNode (_, "poll") _ _ _) = True

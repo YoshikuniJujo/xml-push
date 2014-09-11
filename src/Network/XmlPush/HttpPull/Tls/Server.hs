@@ -34,9 +34,9 @@ instance XmlPusher HttpPullTlsSv where
 makeHttpPull :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	One h -> (XmlNode -> Bool, XmlNode, TlsArgs) ->
 	HandleMonad h (HttpPullTlsSv h)
-makeHttpPull (One h) (ip, ep, TlsArgs mca kcs) = do
+makeHttpPull (One h) (ip, ep, TlsArgs cs mca kcs) = do
 	g <- liftBase (cprgCreate <$> createEntropyPool :: IO SystemRNG)
 	(inc, otc) <- (`run` g) $ do
-		t <- open h ["TLS_RSA_WITH_AES_128_CBC_SHA"] kcs mca
+		t <- open h cs kcs mca
 		runXml t ip ep
 	return $ HttpPullTlsSv (fromTChan inc) (toTChan otc)

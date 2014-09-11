@@ -25,6 +25,7 @@ import Network.PeyoTLS.TChan.Client
 import "crypto-random" Crypto.Random
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BSC
 
 import Network.XmlPush
 import Network.XmlPush.Xmpp.Common
@@ -51,7 +52,7 @@ makeXmppTls :: (
 	ValidateHandle h, MonadBaseControl IO (HandleMonad h),
 	MonadError (HandleMonad h), Error (ErrorType (HandleMonad h))
 	) => One h -> (XmppArgs, TlsArgs) -> HandleMonad h (XmppTls h)
-makeXmppTls (One h) (XmppArgs ms wr inr me ps you, TlsArgs cs ca kcs) = do
+makeXmppTls (One h) (XmppArgs ms wr inr me ps you, TlsArgs dn cs ca kcs) = do
 	nr <- liftBase $ atomically newTChan
 	wc <- liftBase $ atomically newTChan
 	(g :: SystemRNG) <- liftBase $ cprgCreate <$> createEntropyPool
@@ -60,8 +61,8 @@ makeXmppTls (One h) (XmppArgs ms wr inr me ps you, TlsArgs cs ca kcs) = do
 		ss = St [
 			("username", un), ("authcid", un), ("password", ps),
 			("cnonce", cn) ]
-	runPipe_ $ fromHandleLike h =$= starttls "localhost" =$= toHandleLike h
-	(inc, otc) <- open' h "localhost" cs kcs ca g'
+	runPipe_ $ fromHandleLike h =$= starttls (BSC.pack dn) =$= toHandleLike h
+	(inc, otc) <- open' h dn cs kcs ca g'
 	(`evalStateT` ss) . runPipe_ $ fromTChan inc =$= sasl d ms =$= toTChan otc
 	(Just ns, _fts) <- runWriterT . runPipe $ fromTChan inc
 		=$= bind d rsc

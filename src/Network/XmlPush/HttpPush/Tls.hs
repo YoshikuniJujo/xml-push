@@ -36,7 +36,7 @@ import Network.XmlPush.HttpPush.Common
 import Network.XmlPush.Tls.Client as TC
 import Network.XmlPush.Tls.Server as TS
 
-tlsArgsCl :: [Cl.CipherSuite] -> CertificateStore ->
+tlsArgsCl :: String -> [Cl.CipherSuite] -> CertificateStore ->
 	[(CertSecretKey, CertificateChain)] -> TC.TlsArgs
 tlsArgsCl = TC.TlsArgs
 
@@ -68,7 +68,8 @@ makeHttpPushTls :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	h -> h -> (HttpPushArgs, TC.TlsArgs, TS.TlsArgs) ->
 	HandleMonad h (HttpPushTls h)
 makeHttpPushTls ch sh (HttpPushArgs hn pn pt gp wr,
-	TC.TlsArgs cs ca kcs, TS.TlsArgs cs' mca' kcs') = do
+	TC.TlsArgs dn cs ca kcs, TS.TlsArgs cs' mca' kcs') = do
+	when (dn /= hn) $ error "makeHttpPushTls: conflicted domain name"
 	v <- liftBase . atomically $ newTVar False
 	(ci, co) <- clientC ch hn pn pt gp cs ca kcs
 	(si, so) <- talk wr sh cs' mca' kcs'
@@ -84,7 +85,7 @@ clientC h hn pn pt gp cs ca kcs = do
 	otc <- liftBase $ atomically newTChan
 	(g :: SystemRNG) <- liftBase $ cprgCreate <$> createEntropyPool
 	void . liftBaseDiscard forkIO . (`Cl.run` g) $ do
-		t <- Cl.open' h "localhost" cs kcs ca
+		t <- Cl.open' h hn cs kcs ca
 		runPipe_ $ fromTChan otc
 			=$= filter isJust
 			=$= convert fromJust

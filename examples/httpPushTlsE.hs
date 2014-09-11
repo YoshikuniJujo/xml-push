@@ -18,7 +18,7 @@ main = do
 	(sh, _, _) <- accept soc
 	testPusher (undefined :: HttpPushTls Handle) (Two ch sh) (
 		HttpPushArgs "localhost" 80 "" gtPth wntRspns,
-		tlsArgsCl ["TLS_RSA_WITH_AES_128_CBC_SHA"] ca [],
+		tlsArgsCl "localhost" ["TLS_RSA_WITH_AES_128_CBC_SHA"] ca [],
 		tlsArgsSv ["TLS_RSA_WITH_AES_128_CBC_SHA"] Nothing [(k', c')] )
 
 wntRspns :: XmlNode -> Bool

@@ -17,7 +17,7 @@ main = do
 	testPusher (undefined :: HttpPullTlsCl Handle) (One h) (
 		HttpPullClArgs "localhost" 443 "/"
 			(XmlNode (nullQ "poll") [] [] []) pendingQ drtn gtPth,
-		TlsArgs ["TLS_RSA_WITH_AES_128_CBC_SHA"] ca [(k, c)]
+		TlsArgs "localhost" ["TLS_RSA_WITH_AES_128_CBC_SHA"] ca [(k, c)]
 		)
 
 pendingQ :: XmlNode -> Bool

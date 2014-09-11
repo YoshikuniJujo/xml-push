@@ -23,7 +23,7 @@ import Network.TigHTTP.Types
 import qualified Data.ByteString.Lazy as LBS
 
 data HttpPullClArgs = HttpPullClArgs {
-	domainName :: String,
+	domainNamePull :: String,
 	portNumber :: Int,
 	path :: FilePath,
 	poll :: XmlNode,

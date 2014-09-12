@@ -19,7 +19,7 @@ main = do
 	h <- connectTo "localhost" $ PortNumber 5222
 	testPusher (undefined :: Xmpp Handle) (One h)
 		(XmppArgs ["SCRAM-SHA-1", "DIGEST-MD5"]
-			(toJid me) ps (toJid you) wntRspns iNdRspns)
+			(toJid me) ps (toJid you) iNdRspns wntRspns)
 
 wntRspns :: XmlNode -> Bool
 wntRspns (XmlNode (_, "monologue") _ [] []) = False

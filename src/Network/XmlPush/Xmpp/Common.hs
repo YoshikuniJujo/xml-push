@@ -29,11 +29,11 @@ import qualified Data.ByteString as BS
 
 data XmppArgs = XmppArgs {
 	mechanisms :: [BS.ByteString],
-	wantResponse :: XmlNode -> Bool,
+	myJid :: Jid, passowrd :: BS.ByteString,
+	yourJid :: Jid,
 	iNeedResponse :: XmlNode -> Bool,
-	myJid :: Jid,
-	passowrd :: BS.ByteString,
-	yourJid :: Jid }
+	youNeedResponse :: XmlNode -> Bool
+	}
 
 maybeToEither :: a -> Either BS.ByteString a
 maybeToEither x = Right x

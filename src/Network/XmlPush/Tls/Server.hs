@@ -10,6 +10,6 @@ import Text.XML.Pipe
 data TlsArgs = TlsArgs {
 	getClientName :: XmlNode -> Maybe String,
 	cipherSuites :: [CipherSuite],
-	certificateAuthority :: Maybe CertificateStore,
-	keyChain :: [(CertSecretKey, CertificateChain)]
+	certificateAuthorities :: Maybe CertificateStore,
+	keyChains :: [(CertSecretKey, CertificateChain)]
 	}

@@ -23,11 +23,11 @@ import Network.TigHTTP.Types
 import qualified Data.ByteString.Lazy as LBS
 
 data HttpPushArgs = HttpPushArgs {
-	domainName :: String,
+	hostName :: String,
 	portNumber :: Int,
-	path :: FilePath,
+	basePath :: FilePath,
 	getPath :: XmlNode -> FilePath,
-	wantResponse :: XmlNode -> Bool
+	youNeedResponse :: XmlNode -> Bool
 	}
 
 setNeedReply :: MonadBase IO m => TVar Bool -> Pipe (a, Bool) a m ()

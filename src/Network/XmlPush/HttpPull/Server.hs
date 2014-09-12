@@ -1,7 +1,7 @@
 {-# LANGUAGE TypeFamilies, FlexibleContexts,
 	PackageImports #-}
 
-module Network.XmlPush.HttpPull.Server (HttpPullSv) where
+module Network.XmlPush.HttpPull.Server (HttpPullSv, HttpPullSvArgs(..)) where
 
 import Prelude hiding (filter)
 
@@ -20,13 +20,13 @@ data HttpPullSv h = HttpPullSv
 
 instance XmlPusher HttpPullSv where
 	type NumOfHandle HttpPullSv = One
-	type PusherArgs HttpPullSv = (XmlNode -> Bool, XmlNode)
+	type PusherArgs HttpPullSv = HttpPullSvArgs
 	generate = makeHttpPull
 	readFrom (HttpPullSv r _) = r
 	writeTo (HttpPullSv _ w) = w
 
 makeHttpPull :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
-	One h -> (XmlNode -> Bool, XmlNode) -> HandleMonad h (HttpPullSv h)
-makeHttpPull (One h) (ip, ep) = do
+	One h -> HttpPullSvArgs -> HandleMonad h (HttpPullSv h)
+makeHttpPull (One h) (HttpPullSvArgs ip ep) = do
 	(inc, otc) <- runXml h ip ep (convert id)
 	return $ HttpPullSv (fromTChan inc) (toTChan otc)

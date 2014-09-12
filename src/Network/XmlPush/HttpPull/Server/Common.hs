@@ -1,8 +1,6 @@
 {-# LANGUAGE FlexibleContexts, PackageImports #-}
 
-module Network.XmlPush.HttpPull.Server.Common (
-	runXml
-	) where
+module Network.XmlPush.HttpPull.Server.Common (HttpPullSvArgs(..), runXml) where
 
 import "monads-tf" Control.Monad.Trans
 import Control.Monad.Base
@@ -19,6 +17,11 @@ import Network.TigHTTP.Server
 import Network.TigHTTP.Types
 
 import qualified Data.ByteString.Lazy as LBS
+
+data HttpPullSvArgs = HttpPullSvArgs {
+	isPoll :: XmlNode -> Bool,
+	noPending :: XmlNode
+	}
 
 runXml :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	h -> (XmlNode -> Bool) -> XmlNode ->

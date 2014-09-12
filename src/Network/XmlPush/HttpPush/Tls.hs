@@ -3,7 +3,8 @@
 	PackageImports #-}
 
 module Network.XmlPush.HttpPush.Tls (
-	HttpPushTls, HttpPushArgs(..), tlsArgsCl, tlsArgsSv) where
+	HttpPushTls, HttpPushArgs(..),
+	TlsArgsCl, tlsArgsCl, TlsArgsSv, tlsArgsSv) where
 
 import Prelude hiding (filter)
 
@@ -36,12 +37,16 @@ import Network.XmlPush.HttpPush.Common
 import Network.XmlPush.Tls.Client as TC
 import Network.XmlPush.Tls.Server as TS
 
+type TlsArgsCl = TC.TlsArgs
+
 tlsArgsCl :: String -> [Cl.CipherSuite] -> CertificateStore ->
-	[(CertSecretKey, CertificateChain)] -> TC.TlsArgs
+	[(CertSecretKey, CertificateChain)] -> TlsArgsCl
 tlsArgsCl = TC.TlsArgs
 
+type TlsArgsSv = TS.TlsArgs
+
 tlsArgsSv :: (XmlNode -> Maybe String) -> [Cl.CipherSuite] ->
-	Maybe CertificateStore -> [(CertSecretKey, CertificateChain)] -> TS.TlsArgs
+	Maybe CertificateStore -> [(CertSecretKey, CertificateChain)] -> TlsArgsSv
 tlsArgsSv = TS.TlsArgs
 
 data HttpPushTls h = HttpPushTls {

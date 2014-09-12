@@ -23,13 +23,13 @@ import Network.TigHTTP.Types
 import qualified Data.ByteString.Lazy as LBS
 
 data HttpPullClArgs = HttpPullClArgs {
-	domainNamePull :: String,
+	hostName :: String,
 	portNumber :: Int,
-	path :: FilePath,
+	basePath :: FilePath,
+	getPath :: XmlNode -> FilePath,
 	poll :: XmlNode,
 	isPending :: XmlNode -> Bool,
-	duration :: XmlNode -> Maybe Int,
-	getPath :: XmlNode -> FilePath
+	getDuration :: XmlNode -> Maybe Int
 	}
 
 talkC :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>

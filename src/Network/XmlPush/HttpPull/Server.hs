@@ -20,7 +20,7 @@ data HttpPullSv h = HttpPullSv
 
 instance XmlPusher HttpPullSv where
 	type NumOfHandle HttpPullSv = One
-	type PusherArg HttpPullSv = (XmlNode -> Bool, XmlNode)
+	type PusherArgs HttpPullSv = (XmlNode -> Bool, XmlNode)
 	generate = makeHttpPull
 	readFrom (HttpPullSv r _) = r
 	writeTo (HttpPullSv _ w) = w

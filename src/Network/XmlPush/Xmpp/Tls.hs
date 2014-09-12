@@ -39,7 +39,7 @@ data XmppTls h = XmppTls
 
 instance XmlPusher XmppTls where
 	type NumOfHandle XmppTls = One
-	type PusherArg XmppTls = (XmppArgs, TlsArgs)
+	type PusherArgs XmppTls = (XmppArgs, TlsArgs)
 	generate = makeXmppTls
 	readFrom (XmppTls wr nr r wc) = r
 		=$= pushId wr nr wc

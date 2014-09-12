@@ -36,7 +36,7 @@ data Xmpp h = Xmpp
 
 instance XmlPusher Xmpp where
 	type NumOfHandle Xmpp = One
-	type PusherArg Xmpp = XmppArgs
+	type PusherArgs Xmpp = XmppArgs
 	generate = makeXmpp
 	readFrom (Xmpp wr nr r wc) = r
 		=$= pushId wr nr wc

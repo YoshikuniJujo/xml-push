@@ -30,7 +30,7 @@ data HttpPullTlsCl h = HttpPullTlsCl
 
 instance XmlPusher HttpPullTlsCl where
 	type NumOfHandle HttpPullTlsCl = One
-	type PusherArg HttpPullTlsCl = (HttpPullClArgs, TlsArgs)
+	type PusherArgs HttpPullTlsCl = (HttpPullClArgs, TlsArgs)
 	generate = makeHttpPull
 	readFrom (HttpPullTlsCl r _) = r
 	writeTo (HttpPullTlsCl _ w) = w

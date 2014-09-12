@@ -53,7 +53,7 @@ data HttpPushTls h = HttpPushTls {
 
 instance XmlPusher HttpPushTls where
 	type NumOfHandle HttpPushTls = Two
-	type PusherArg HttpPushTls = (HttpPushArgs, TC.TlsArgs, TS.TlsArgs)
+	type PusherArgs HttpPushTls = (HttpPushArgs, TC.TlsArgs, TS.TlsArgs)
 	generate (Two ch sh) = makeHttpPushTls ch sh
 	readFrom hp = fromTChans [clientReadChan hp, serverReadChan hp] =$=
 		setNeedReply (needReply hp)

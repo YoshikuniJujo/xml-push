@@ -28,7 +28,7 @@ data HttpPullTlsSv h = HttpPullTlsSv
 
 instance XmlPusher HttpPullTlsSv where
 	type NumOfHandle HttpPullTlsSv = One
-	type PusherArg HttpPullTlsSv = (XmlNode -> Bool, XmlNode, TlsArgs)
+	type PusherArgs HttpPullTlsSv = (XmlNode -> Bool, XmlNode, TlsArgs)
 	generate = makeHttpPull
 	readFrom (HttpPullTlsSv r _) = r
 	writeTo (HttpPullTlsSv _ w) = w

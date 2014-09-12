@@ -15,8 +15,8 @@ main = do
 	k <- readKey "certs/yoshikuni.sample_key"
 	c <- readCertificateChain ["certs/yoshikuni.sample_crt"]
 	testPusher (undefined :: HttpPullTlsCl Handle) (One h) (
-		HttpPullClArgs "localhost" 443 "/" gtPth
-			(XmlNode (nullQ "poll") [] [] []) pendingQ drtn,
+		HttpPullClArgs "localhost" 443 "/" gtPth (XmlNode
+			(nullQ "poll") [] [] []) pendingQ (Just 10000000) drtn,
 		TlsArgs "localhost" ["TLS_RSA_WITH_AES_128_CBC_SHA"] ca [(k, c)]
 		)
 

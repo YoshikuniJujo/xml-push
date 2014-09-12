@@ -29,6 +29,7 @@ data HttpPullClArgs = HttpPullClArgs {
 	getPath :: XmlNode -> FilePath,
 	poll :: XmlNode,
 	isPending :: XmlNode -> Bool,
+	duration :: Maybe Int,
 	getDuration :: XmlNode -> Maybe Int
 	}
 

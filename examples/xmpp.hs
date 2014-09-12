@@ -18,8 +18,8 @@ main = do
 	me : ps : you : _ <- map BSC.pack <$> getArgs
 	h <- connectTo "localhost" $ PortNumber 5222
 	testPusher (undefined :: Xmpp Handle) (One h)
-		(XmppArgs ["SCRAM-SHA-1", "DIGEST-MD5"] wntRspns iNdRspns
-			(toJid me) ps (toJid you))
+		(XmppArgs ["SCRAM-SHA-1", "DIGEST-MD5"]
+			(toJid me) ps (toJid you) wntRspns iNdRspns)
 
 wntRspns :: XmlNode -> Bool
 wntRspns (XmlNode (_, "monologue") _ [] []) = False

@@ -2,6 +2,7 @@
 
 module TestPusher (XmlPusher(..), Zero(..), One(..), Two(..), testPusher) where
 
+import Control.Applicative
 import Control.Monad
 import Control.Concurrent
 import Data.Maybe
@@ -13,9 +14,9 @@ import Text.XML.Pipe
 import Network.XmlPush
 
 testPusher :: XmlPusher xp =>
-	xp Handle -> NumOfHandle xp Handle -> PusherArg xp -> IO ()
+	xp Handle -> NumOfHandle xp Handle -> PusherArgs xp -> IO ()
 testPusher tp hs as = do
-	xp <- generate hs as >>= return . (`asTypeOf` tp)
+	xp <- (`asTypeOf` tp) <$> generate hs as
 	void . forkIO . runPipe_ $ readFrom xp
 		=$= convert (xmlString . (: []))
 		=$= toHandle stdout

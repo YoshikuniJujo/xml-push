@@ -22,7 +22,7 @@ main = do
 	c <- readCertificateChain ["certs/yoshikuni.sample_crt"]
 	testPusher (undefined :: XmppTls Handle) (One h) (
 		XmppArgs ["EXTERNAL", "SCRAM-SHA-1", "DIGEST-MD5", "PLAIN"]
-			wntRspns iNdRspns (toJid me) ps (toJid you),
+			(toJid me) ps (toJid you) wntRspns iNdRspns,
 		TlsArgs "localhost" ["TLS_RSA_WITH_AES_128_CBC_SHA"] ca [(k, c)] )
 
 wntRspns :: XmlNode -> Bool

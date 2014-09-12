@@ -1,5 +1,3 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-
 import Control.Monad
 import Control.Concurrent
 import Network

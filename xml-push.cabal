@@ -14,9 +14,64 @@ license-file:	LICENSE
 category:	Network
 synopsis:	Push XML from/to client to/from server over XMPP or HTTP
 description:
-    yet
+    examples/TestSimple.hs
+    .
+    extensions
+    .
+    * ScopedTypeVariables
+    .
+    > module TestSimple (testSimple) where
+    >
+    > import Control.Monad
+    > import Control.Concurrent
+    > import Data.Maybe
+    > import Data.Pipe
+    > import Data.Pipe.ByteString
+    > import System.IO
+    > import Text.XML.Pipe
+    > import Network.XmlPush
+    > import Network.XmlPush.Simple
+    >
+    > testSimple :: Handle -> IO ()
+    > testSimple h = do
+    > 	(sp :: SimplePusher Handle) <- generate (One h) ()
+    > 	void . forkIO . runPipe_ $ readFrom sp
+    > 		=$= convert (xmlString . (: []))
+    > 		=$= toHandle stdout
+    > 	runPipe_ $ fromHandle stdin
+    > 		=$= xmlEvent
+    > 		=$= convert fromJust
+    > 		=$= xmlNode []
+    > 		=$= writeTo sp
+    .
+    examples/simpleClient
+    .
+    > import Network
+    > import TestSimple
+    >
+    > main :: IO ()
+    > main = testSimple =<< connectTo "localhost" (PortNumber 54492)
+    .
+    examples/simpleServer
+    .
+    > import Control.Monad
+    > import Control.Concurrent
+    > import Network
+    >
+    > import TestSimple
+    >
+    > main :: IO ()
+    > main = forever . (void . forkIO . testSimple . fst3 =<<) . accept
+    > 	=<< listenOn (PortNumber 54492)
+    >
+    > fst3 :: (a, b, c) -> a
+    > fst3 (x, _, _) = x
+    .
 
 extra-source-files:
+    examples/simpleClient.hs
+    examples/simpleServer.hs
+    examples/TestSimple.hs
     examples/TestPusher.hs
     examples/FilePusher.hs
     examples/simple.hs

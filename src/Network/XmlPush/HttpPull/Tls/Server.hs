@@ -40,18 +40,13 @@ makeHttpPull (One h) (HttpPullSvArgs ip ep, TlsArgs gn cs mca kcs) = do
 	g <- liftBase (cprgCreate <$> createEntropyPool :: IO SystemRNG)
 	(inc, otc) <- (`run` g) $ do
 		t <- open h cs kcs mca
-		runXml t ip ep $ checkName t gn
+		runXml t ip ep $ checkNameP t gn
 	return $ HttpPullTlsSv (fromTChan inc) (toTChan otc)
 
-checkName :: HandleLike h => TlsHandle h g -> (XmlNode -> Maybe String) ->
+checkNameP :: HandleLike h => TlsHandle h g -> (XmlNode -> Maybe String) ->
 	Pipe XmlNode XmlNode (TlsM h g) ()
-checkName t gn = (await >>=) . maybe (return ()) $ \n -> do
-	ok <- maybe (return True) (lift . svCheckName t) $ gn n
+checkNameP t gn = (await >>=) . maybe (return ()) $ \n -> do
+	ok <- maybe (return True) (lift . checkName t) $ gn n
 	unless ok $ error "checkName: bad client name"
 	yield n
-	checkName t gn
-
-svCheckName :: HandleLike h => TlsHandle h g -> String -> TlsM h g Bool
-svCheckName t n = do
-	ns <- getNames t
-	return $ n `elem` ns
+	checkNameP t gn

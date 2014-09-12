@@ -1,4 +1,4 @@
-{-# LANGUAGE TupleSections, TypeFamilies, FlexibleContexts, PackageImports #-}
+{-# LANGUAGE TupleSections, TypeFamilies, FlexibleContexts #-}
 
 module TestPusher (XmlPusher(..), Zero(..), One(..), Two(..), testPusher) where
 

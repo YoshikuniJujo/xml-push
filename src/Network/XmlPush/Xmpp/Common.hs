@@ -42,7 +42,6 @@ pushId wr nr wc = (await >>=) . maybe (return ()) $ \mpi -> case mpi of
 			lift . liftBase . atomically . writeTChan nr $ Just i
 			yield mpi >> pushId wr nr wc
 		| otherwise -> do
-			lift . liftBase . putStrLn $ "MONOLOGUE: " ++ show n
 			lift . liftBase . atomically . writeTChan wc $ Left i
 			yield mpi >> pushId wr nr wc
 	Iq Tags { tagType = Just "set", tagId = Just i } [n]
@@ -54,7 +53,6 @@ pushId wr nr wc = (await >>=) . maybe (return ()) $ \mpi -> case mpi of
 			yield mpi >> pushId wr nr wc
 	Message _ [n]
 		| wr n -> do
-			lift . liftBase . putStrLn $ "THERE: " ++ show n
 			lift . liftBase . atomically $ writeTChan nr Nothing
 			yield mpi >> pushId wr nr wc
 		| otherwise -> yield mpi >> pushId wr nr wc
@@ -87,7 +85,6 @@ makeResponse inr you nr = (await >>=) . maybe (return ()) $ \(mn, r) -> do
 			else do	i <- lift . liftBase . atomically $ readTChan nr
 				either (const $ return ()) yield $
 					toResponse you mn i uuid
-				lift . liftBase . putStrLn $ "HERE: " ++ show i
 	makeResponse inr you nr
 
 makeIqMessage :: (XmlNode -> Bool) -> Jid -> UUID -> UUID -> XmlNode -> Mpi

@@ -43,7 +43,7 @@ source-repository	this
 library
     hs-source-dirs:	src
     exposed-modules:
-        Network.XmlPush
+        Network.XmlPush, Network.XmlPush.Simple
         Network.XmlPush.Xmpp, Network.XmlPush.Xmpp.Tls
         Network.XmlPush.HttpPull.Client, Network.XmlPush.HttpPull.Server
         Network.XmlPush.HttpPull.Tls.Client, Network.XmlPush.HttpPull.Tls.Server

@@ -31,7 +31,6 @@ readXml :: MonadBaseControl IO m => FilePath -> Pipe () XmlNode m ()
 readXml rf = fromFile rf
 	=$= xmlEvent
 	=$= convert fromJust
---	=$= (xmlNode [] >> return ())
 	=$= void (xmlNode [])
 
 writeXml :: MonadBaseControl IO m => FilePath -> Pipe XmlNode () m ()

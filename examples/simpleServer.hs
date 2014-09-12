@@ -7,8 +7,8 @@ import Network
 import TestSimple
 
 main :: IO ()
-main = do
-	soc <- listenOn $ PortNumber 54492
-	forever $ do
-		(h, _, _) <- accept soc
-		void . forkIO $ testSimple h
+main = forever . (void . forkIO . testSimple . fst3 =<<) . accept
+	=<< listenOn (PortNumber 54492)
+
+fst3 :: (a, b, c) -> a
+fst3 (x, _, _) = x

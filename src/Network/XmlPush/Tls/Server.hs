@@ -5,8 +5,10 @@ module Network.XmlPush.Tls.Server (
 import Data.X509
 import Data.X509.CertificateStore
 import Network.PeyoTLS.Client
+import Text.XML.Pipe
 
 data TlsArgs = TlsArgs {
+	getClientName :: XmlNode -> Maybe String,
 	cipherSuites :: [CipherSuite],
 	certificateAuthority :: Maybe CertificateStore,
 	keyChain :: [(CertSecretKey, CertificateChain)]

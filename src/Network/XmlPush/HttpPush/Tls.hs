@@ -40,8 +40,8 @@ tlsArgsCl :: String -> [Cl.CipherSuite] -> CertificateStore ->
 	[(CertSecretKey, CertificateChain)] -> TC.TlsArgs
 tlsArgsCl = TC.TlsArgs
 
-tlsArgsSv :: [Cl.CipherSuite] -> Maybe CertificateStore ->
-	[(CertSecretKey, CertificateChain)] -> TS.TlsArgs
+tlsArgsSv :: (XmlNode -> Maybe String) -> [Cl.CipherSuite] ->
+	Maybe CertificateStore -> [(CertSecretKey, CertificateChain)] -> TS.TlsArgs
 tlsArgsSv = TS.TlsArgs
 
 data HttpPushTls h = HttpPushTls {
@@ -68,11 +68,11 @@ makeHttpPushTls :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	h -> h -> (HttpPushArgs, TC.TlsArgs, TS.TlsArgs) ->
 	HandleMonad h (HttpPushTls h)
 makeHttpPushTls ch sh (HttpPushArgs hn pn pt gp wr,
-	TC.TlsArgs dn cs ca kcs, TS.TlsArgs cs' mca' kcs') = do
+	TC.TlsArgs dn cs ca kcs, TS.TlsArgs gn cs' mca' kcs') = do
 	when (dn /= hn) $ error "makeHttpPushTls: conflicted domain name"
 	v <- liftBase . atomically $ newTVar False
 	(ci, co) <- clientC ch hn pn pt gp cs ca kcs
-	(si, so) <- talk wr sh cs' mca' kcs'
+	(si, so) <- talk wr sh gn cs' mca' kcs'
 	return $ HttpPushTls v ci co si so
 
 clientC :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
@@ -96,10 +96,10 @@ clientC h hn pn pt gp cs ca kcs = do
 
 talk :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	(XmlNode -> Bool) -> h ->
-	[Sv.CipherSuite] ->
+	(XmlNode -> Maybe String) -> [Sv.CipherSuite] ->
 	Maybe CertificateStore -> [(CertSecretKey, CertificateChain)] ->
 	HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
-talk wr h cs mca kcs = do
+talk wr h gn cs mca kcs = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
 	g <- liftBase (cprgCreate <$> createEntropyPool :: IO SystemRNG)
@@ -111,6 +111,7 @@ talk wr h cs mca kcs = do
 				=$= xmlEvent
 				=$= convert fromJust
 				=$= xmlNode []
+				=$= checkName t gn
 				=$= checkReply wr otc
 				=$= toTChan inc
 			fromTChan otc =$= await >>= maybe (return ()) (\mn ->
@@ -118,3 +119,16 @@ talk wr h cs mca kcs = do
 					Just n -> LBS.fromChunks [xmlString [n]]
 					_ -> "")
 	return (inc, otc)
+
+checkName :: HandleLike h => Sv.TlsHandle h g -> (XmlNode -> Maybe String) ->
+	Pipe XmlNode XmlNode (Sv.TlsM h g) ()
+checkName t gn = (await >>=) . maybe (return ()) $ \n -> do
+	ok <- maybe (return True) (lift . svCheckName t) $ gn n
+	unless ok $ error "checkName: bad client name"
+	yield n
+	checkName t gn
+
+svCheckName :: HandleLike h => Sv.TlsHandle h g -> String -> Sv.TlsM h g Bool
+svCheckName t n = do
+	ns <- Sv.getNames t
+	return $ n `elem` ns

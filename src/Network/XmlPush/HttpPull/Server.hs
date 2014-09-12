@@ -11,8 +11,6 @@ import Data.Pipe
 import Data.Pipe.TChan
 import Text.XML.Pipe
 
-import qualified Data.ByteString.Lazy as LBS
-
 import Network.XmlPush
 import Network.XmlPush.HttpPull.Server.Common
 
@@ -30,5 +28,5 @@ instance XmlPusher HttpPullSv where
 makeHttpPull :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	One h -> (XmlNode -> Bool, XmlNode) -> HandleMonad h (HttpPullSv h)
 makeHttpPull (One h) (ip, ep) = do
-	(inc, otc) <- runXml h ip ep
+	(inc, otc) <- runXml h ip ep (convert id)
 	return $ HttpPullSv (fromTChan inc) (toTChan otc)

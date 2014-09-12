@@ -22,23 +22,26 @@ import qualified Data.ByteString.Lazy as LBS
 
 runXml :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	h -> (XmlNode -> Bool) -> XmlNode ->
+	Pipe XmlNode XmlNode (HandleMonad h) () ->
 	HandleMonad h (TChan XmlNode, TChan XmlNode)
-runXml h ip ep = do
+runXml h ip ep cn = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
-	_ <- liftBaseDiscard forkIO . runPipe_ $ talk h ip ep inc otc
+	_ <- liftBaseDiscard forkIO . runPipe_ $ talk h ip ep inc otc cn
 	return (inc, otc)
 
 talk :: (HandleLike h, MonadBase IO (HandleMonad h)) =>
 	h -> (XmlNode -> Bool) -> XmlNode ->
-	TChan XmlNode -> TChan XmlNode -> Pipe () () (HandleMonad h) ()
-talk h ip ep inc otc = do
+	TChan XmlNode -> TChan XmlNode -> Pipe XmlNode XmlNode (HandleMonad h) () ->
+	Pipe () () (HandleMonad h) ()
+talk h ip ep inc otc cn = do
 	r <- lift $ getRequest h
 	lift . liftBase . print $ requestPath r
 	rns <- requestBody r
 		=$= xmlEvent
 		=$= convert fromJust
 		=$= xmlNode []
+		=$= cn
 		=$= toList
 	if case rns of [n] -> ip n; _ -> False
 	then (flushOr otc ep =$=) . (await >>=) . maybe (return ()) $ \n ->
@@ -47,7 +50,7 @@ talk h ip ep inc otc = do
 		(fromTChan otc =$=) . (await >>=) . maybe (return ()) $ \n ->
 			lift . putResponse h . responseP
 				$ LBS.fromChunks [xmlString [n]]
-	talk h ip ep inc otc
+	talk h ip ep inc otc cn
 
 responseP :: (HandleLike h, MonadBase IO (HandleMonad h)) =>
 	LBS.ByteString -> Response Pipe h

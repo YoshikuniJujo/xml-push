@@ -86,6 +86,13 @@ extra-source-files:
     examples/httpPushTlsT.hs
     examples/httpPushTlsE.hs
 
+data-files:
+    certs/cacert.sample_pem
+    certs/localhost.sample_key
+    certs/localhost.sample_crt
+    certs/yoshikuni.sample_key
+    certs/yoshikuni.sample_crt
+
 source-repository	head
     type:	git
     location:	git://github.com/YoshikuniJujo/xml-push.git

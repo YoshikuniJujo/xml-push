@@ -8,6 +8,7 @@ module Network.XmlPush.HttpPush.Common (
 	responseP,
 	) where
 
+import Control.Monad
 import "monads-tf" Control.Monad.Trans
 import Control.Monad.Base
 import Control.Monad.Trans.Control
@@ -44,7 +45,7 @@ clientLoop h hn pn pt gp = (await >>=) . maybe (return ()) $ \n -> do
 		=$= responseBody r
 		=$= xmlEvent
 		=$= convert fromJust
-		=$= (xmlNode [] >> return ())
+		=$= void (xmlNode [])
 	clientLoop h hn pn pt gp
 
 checkReply :: MonadBase IO m => (XmlNode -> Bool) -> TChan (Maybe XmlNode) ->

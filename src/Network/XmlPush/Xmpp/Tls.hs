@@ -46,7 +46,7 @@ instance XmlPusher XmppTls where
 		=$= convert fromMessage
 		=$= filter isJust
 		=$= convert fromJust
-	writeTo (XmppTls _ _nr _ w) = convert maybeToEither =$= toTChan w
+	writeTo (XmppTls _ _nr _ w) = convert Right =$= toTChan w
 
 makeXmppTls :: (
 	ValidateHandle h, MonadBaseControl IO (HandleMonad h),

@@ -1,5 +1,4 @@
-{-# LANGUAGE TypeFamilies, FlexibleContexts,
-	PackageImports #-}
+{-# LANGUAGE TypeFamilies, FlexibleContexts #-}
 
 module Network.XmlPush.HttpPull.Client (HttpPullCl, HttpPullClArgs(..)) where
 

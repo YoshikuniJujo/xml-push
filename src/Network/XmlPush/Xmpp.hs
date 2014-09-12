@@ -43,7 +43,7 @@ instance XmlPusher Xmpp where
 		=$= convert fromMessage
 		=$= filter isJust
 		=$= convert fromJust
-	writeTo (Xmpp _ _ _ w) = convert maybeToEither =$= toTChan w
+	writeTo (Xmpp _ _ _ w) = convert Right =$= toTChan w
 
 makeXmpp :: (
 	HandleLike h, MonadBaseControl IO (HandleMonad h),

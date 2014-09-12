@@ -4,7 +4,6 @@
 
 module Network.XmlPush.Xmpp.Common (
 	XmppArgs(..),
-	maybeToEither,
 	pushId,
 	fromMessage,
 	addRandom,
@@ -34,9 +33,6 @@ data XmppArgs = XmppArgs {
 	iNeedResponse :: XmlNode -> Bool,
 	youNeedResponse :: XmlNode -> Bool
 	}
-
-maybeToEither :: a -> Either BS.ByteString a
-maybeToEither x = Right x
 
 pushId :: MonadBase IO m => (XmlNode -> Bool) -> TChan (Maybe BS.ByteString) ->
 	TChan (Either BS.ByteString XmlNode) -> Pipe Mpi Mpi m ()
@@ -81,9 +77,8 @@ makeResponse :: MonadBase IO m =>
 	Pipe (Either BS.ByteString XmlNode, UUID) Mpi m ()
 makeResponse inr you nr = (await >>=) . maybe (return ()) $ \(mn, r) -> do
 	case mn of
-		Left i | not $ BS.null i -> do
-			either (const $ return ()) yield $
-				toResponse you mn (Just i) undefined
+		Left i | not $ BS.null i -> either (const $ return ()) yield $
+			toResponse you mn (Just i) undefined
 		_ -> do	e <- lift . liftBase . atomically $ isEmptyTChan nr
 			uuid <- lift $ liftBase randomIO
 			if e

@@ -81,15 +81,13 @@ polling pl ip i i' o = do
 	atomically $ writeTChan o pl
 	r <- atomically $ readTChan i
 	hFlush stdout
-	if ip r
-	then atomically (writeTChan i' r) >> polling pl ip i i' o
-	else return ()
+	when (ip r) $ atomically (writeTChan i' r) >> polling pl ip i i' o
 
 talk :: (MonadBase IO (HandleMonad h), HandleLike h) =>
 	TChan () -> h -> String -> Int ->
 	FilePath -> (XmlNode -> FilePath) ->
 	Pipe XmlNode XmlNode (HandleMonad h) ()
-talk lock h addr pn pth gp = (await >>=) . (maybe (return ())) $ \n -> do
+talk lock h addr pn pth gp = (await >>=) . maybe (return ()) $ \n -> do
 	let m = LBS.fromChunks [xmlString [n]]
 	lift . liftBase . atomically $ readTChan lock
 	r <- lift . request h $ post addr pn (pth ++ "/" ++ gp n) (Nothing, m)

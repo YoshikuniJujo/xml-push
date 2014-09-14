@@ -28,7 +28,7 @@ data HttpPullTlsCl h = HttpPullTlsCl
 	(Pipe () XmlNode (HandleMonad h) ())
 	(Pipe XmlNode () (HandleMonad h) ())
 
-data HttpPullTlsClArgs h = HttpPullTlsClArgs (HttpPullClArgs h) TlsArgs
+data HttpPullTlsClArgs h = HttpPullTlsClArgs (HttpPullClArgs TChanHandle) TlsArgs
 
 instance XmlPusher HttpPullTlsCl where
 	type NumOfHandle HttpPullTlsCl = One
@@ -82,6 +82,5 @@ makeHttpPull (One h) (HttpPullTlsClArgs
 	(inc, otc) <- do
 		(g :: SystemRNG) <- liftBase $ cprgCreate <$> createEntropyPool
 		(ic, oc) <- open' h dn cs kcs ca g
-		pll <- pl
-		liftBase $ talkC (TChanHandle ic oc) hn pn fp gp pll ip dr gd
+		liftBase $ talkC (TChanHandle ic oc) hn pn fp gp pl ip dr gd
 	return $ HttpPullTlsCl (fromTChan inc) (toTChan otc)

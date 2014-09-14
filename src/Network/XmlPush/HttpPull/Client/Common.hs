@@ -35,7 +35,7 @@ data HttpPullClArgs h = HttpPullClArgs {
 
 talkC :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	h -> String -> Int -> FilePath -> (XmlNode -> FilePath) ->
-	XmlNode -> (XmlNode -> Bool) ->
+	HandleMonad h XmlNode -> (XmlNode -> Bool) ->
 	TVar (Maybe Int) -> (XmlNode -> Maybe Int) ->
 	HandleMonad h (TChan XmlNode, TChan XmlNode)
 talkC h addr pn pth gp pl ip dr gdr = do
@@ -58,7 +58,8 @@ talkC h addr pn pth gp pl ip dr gdr = do
 				Just d -> return d
 				_ -> retry
 		liftBase $ threadDelay d
-		liftBase $ polling pl ip inc' inc otc'
+		p <- pl
+		liftBase $ polling p ip inc' inc otc'
 	return (inc, otc)
 
 conversation :: (HandleLike h, MonadBase IO (HandleMonad h)) =>

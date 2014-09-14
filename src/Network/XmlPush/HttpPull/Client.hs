@@ -30,6 +30,5 @@ makeHttpPull :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	One h -> HttpPullClArgs h -> HandleMonad h (HttpPullCl h)
 makeHttpPull (One h) (HttpPullClArgs hn pn fp gp pl ip d gdr) = do
 	dr <- liftBase . atomically $ newTVar d
-	pll <- pl
-	(inc, otc) <- talkC h hn pn fp gp pll ip dr gdr
+	(inc, otc) <- talkC h hn pn fp gp pl ip dr gdr
 	return $ HttpPullCl (fromTChan inc) (toTChan otc)

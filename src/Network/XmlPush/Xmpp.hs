@@ -48,7 +48,7 @@ instance XmlPusher Xmpp where
 makeXmpp :: (
 	HandleLike h, MonadBaseControl IO (HandleMonad h),
 	MonadError (HandleMonad h), Error (ErrorType (HandleMonad h))
-	) => One h -> XmppArgs -> HandleMonad h (Xmpp h)
+	) => One h -> XmppArgs h -> HandleMonad h (Xmpp h)
 makeXmpp (One h) (XmppArgs ms me ps you inr wr) = do
 	nr <- liftBase $ atomically newTChan
 	wc <- liftBase $ atomically newTChan

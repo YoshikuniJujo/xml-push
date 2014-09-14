@@ -2,7 +2,8 @@
 	TypeFamilies, FlexibleContexts, ScopedTypeVariables,
 	PackageImports #-}
 
-module Network.XmlPush.Xmpp.Tls (XmppTls, XmppArgs(..), TlsArgs(..)) where
+module Network.XmlPush.Xmpp.Tls (
+	XmppTls, XmppTlsArgs(..), XmppArgs(..), TlsArgs(..)) where
 
 import Prelude hiding (filter)
 
@@ -37,9 +38,11 @@ data XmppTls h = XmppTls
 	(Pipe () Mpi (HandleMonad h) ())
 	(TChan (Either BS.ByteString XmlNode))
 
+data XmppTlsArgs h = XmppTlsArgs (XmppArgs h) TlsArgs
+
 instance XmlPusher XmppTls where
 	type NumOfHandle XmppTls = One
-	type PusherArgs XmppTls = (XmppArgs, TlsArgs)
+	type PusherArgs XmppTls = XmppTlsArgs
 	generate = makeXmppTls
 	readFrom (XmppTls wr nr r wc) = r
 		=$= pushId wr nr wc
@@ -51,8 +54,9 @@ instance XmlPusher XmppTls where
 makeXmppTls :: (
 	ValidateHandle h, MonadBaseControl IO (HandleMonad h),
 	MonadError (HandleMonad h), Error (ErrorType (HandleMonad h))
-	) => One h -> (XmppArgs, TlsArgs) -> HandleMonad h (XmppTls h)
-makeXmppTls (One h) (XmppArgs ms me ps you inr wr, TlsArgs dn cs ca kcs) = do
+	) => One h -> XmppTlsArgs h -> HandleMonad h (XmppTls h)
+makeXmppTls (One h)
+	(XmppTlsArgs (XmppArgs ms me ps you inr wr) (TlsArgs dn cs ca kcs)) = do
 	nr <- liftBase $ atomically newTChan
 	wc <- liftBase $ atomically newTChan
 	(g :: SystemRNG) <- liftBase $ cprgCreate <$> createEntropyPool

@@ -3,7 +3,7 @@
 	PackageImports #-}
 
 module Network.XmlPush.HttpPush.Tls (
-	HttpPushTls, HttpPushArgs(..),
+	HttpPushTls, HttpPushTlsArgs(..), HttpPushArgs(..),
 	TlsArgsCl, tlsArgsCl, TlsArgsSv, tlsArgsSv) where
 
 import Prelude hiding (filter)
@@ -56,9 +56,11 @@ data HttpPushTls h = HttpPushTls {
 	serverReadChan :: TChan (XmlNode, Bool),
 	serverWriteChan :: TChan (Maybe XmlNode) }
 
+data HttpPushTlsArgs h = HttpPushTlsArgs (HttpPushArgs h) TC.TlsArgs TS.TlsArgs
+
 instance XmlPusher HttpPushTls where
 	type NumOfHandle HttpPushTls = Two
-	type PusherArgs HttpPushTls = (HttpPushArgs, TC.TlsArgs, TS.TlsArgs)
+	type PusherArgs HttpPushTls = HttpPushTlsArgs
 	generate (Two ch sh) = makeHttpPushTls ch sh
 	readFrom hp = fromTChans [clientReadChan hp, serverReadChan hp] =$=
 		setNeedReply (needReply hp)
@@ -70,10 +72,9 @@ instance XmlPusher HttpPushTls where
 			(const True, clientWriteChan hp) ]
 
 makeHttpPushTls :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
-	h -> h -> (HttpPushArgs, TC.TlsArgs, TS.TlsArgs) ->
-	HandleMonad h (HttpPushTls h)
-makeHttpPushTls ch sh (HttpPushArgs hn pn pt gp wr,
-	TC.TlsArgs dn cs ca kcs, TS.TlsArgs gn cs' mca' kcs') = do
+	h -> h -> HttpPushTlsArgs h -> HandleMonad h (HttpPushTls h)
+makeHttpPushTls ch sh (HttpPushTlsArgs (HttpPushArgs hn pn pt gp wr)
+	(TC.TlsArgs dn cs ca kcs) (TS.TlsArgs gn cs' mca' kcs')) = do
 	when (dn /= hn) $ error "makeHttpPushTls: conflicted domain name"
 	v <- liftBase . atomically $ newTVar False
 	(ci, co) <- clientC ch hn pn pt gp cs ca kcs

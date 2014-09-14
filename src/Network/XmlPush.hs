@@ -12,12 +12,12 @@ import Network.PeyoTLS.Client
 
 class XmlPusher xp where
 	type NumOfHandle xp :: * -> *
-	type PusherArgs xp
+	type PusherArgs xp :: * -> *
 	generate :: (
 		ValidateHandle h, MonadBaseControl IO (HandleMonad h),
 		MonadError (HandleMonad h), Error (ErrorType (HandleMonad h))
 		) =>
-		NumOfHandle xp h -> PusherArgs xp -> HandleMonad h (xp h)
+		NumOfHandle xp h -> PusherArgs xp h -> HandleMonad h (xp h)
 	readFrom :: (HandleLike h, MonadBase IO (HandleMonad h)) =>
 		xp h -> Pipe () XmlNode (HandleMonad h) ()
 	writeTo :: (HandleLike h, MonadBase IO (HandleMonad h)) =>

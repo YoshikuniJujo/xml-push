@@ -23,7 +23,7 @@ import Network.TigHTTP.Types
 
 import qualified Data.ByteString.Lazy as LBS
 
-data HttpPushArgs = HttpPushArgs {
+data HttpPushArgs h = HttpPushArgs {
 	hostName :: String,
 	portNumber :: Int,
 	basePath :: FilePath,

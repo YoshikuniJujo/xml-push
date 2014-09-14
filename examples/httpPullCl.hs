@@ -10,9 +10,12 @@ import TestPusher
 main :: IO ()
 main = do
 	h <- connectTo "localhost" $ PortNumber 80
-	testPusher (undefined :: HttpPullCl Handle) (One h)
-		(HttpPullClArgs "localhost" 80 "/" gtPth (XmlNode
-			(nullQ "poll") [] [] []) pendingQ (Just 10000000) drtn)
+	testPusher (undefined :: HttpPullCl Handle) (One h) (HttpPullClArgs
+		"localhost" 80 "/" gtPth mkPoll pendingQ (Just 10000000) drtn)
+
+mkPoll :: IO XmlNode
+mkPoll = do
+	return $ XmlNode (nullQ "poll") [] [] []
 
 pendingQ :: XmlNode -> Bool
 pendingQ (XmlNode (_, "nothing") _ [] []) = False

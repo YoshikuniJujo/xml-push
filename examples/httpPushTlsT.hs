@@ -20,12 +20,14 @@ main = do
 	forever  $ do
 		(sh, _, _) <- accept soc
 		ch <- connectTo "localhost" $ PortNumber 8080
-		testPusher (undefined :: HttpPushTls Handle) (Two ch sh) (
-			HttpPushArgs "Yoshikuni" 8080 "" gtPth wntRspns,
-			tlsArgsCl "Yoshikuni"
-				["TLS_RSA_WITH_AES_128_CBC_SHA"] ca [(k', c')],
-			tlsArgsSv gtNm ["TLS_RSA_WITH_AES_128_CBC_SHA"]
-				(Just ca) [(k', c')] )
+		testPusher (undefined :: HttpPushTls Handle) (Two ch sh)
+			(HttpPushTlsArgs
+				(HttpPushArgs "Yoshikuni" 8080 "" gtPth wntRspns)
+				(tlsArgsCl "Yoshikuni"
+					["TLS_RSA_WITH_AES_128_CBC_SHA"]
+						ca [(k', c')])
+				(tlsArgsSv gtNm ["TLS_RSA_WITH_AES_128_CBC_SHA"]
+					(Just ca) [(k', c')]) )
 
 wntRspns :: XmlNode -> Bool
 wntRspns (XmlNode (_, "monologue") _ [] []) = False

@@ -22,12 +22,12 @@ import Network.TigHTTP.Types
 
 import qualified Data.ByteString.Lazy as LBS
 
-data HttpPullClArgs = HttpPullClArgs {
+data HttpPullClArgs h = HttpPullClArgs {
 	hostName :: String,
 	portNumber :: Int,
 	basePath :: FilePath,
 	getPath :: XmlNode -> FilePath,
-	poll :: XmlNode,
+	poll :: HandleMonad h XmlNode,
 	isPending :: XmlNode -> Bool,
 	duration :: Maybe Int,
 	getDuration :: XmlNode -> Maybe Int

@@ -18,7 +18,7 @@ import Network.TigHTTP.Types
 
 import qualified Data.ByteString.Lazy as LBS
 
-data HttpPullSvArgs = HttpPullSvArgs {
+data HttpPullSvArgs h = HttpPullSvArgs {
 	isPoll :: XmlNode -> Bool,
 	noPending :: XmlNode
 	}

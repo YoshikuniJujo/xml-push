@@ -2,7 +2,7 @@
 	PackageImports #-}
 
 module Network.XmlPush.HttpPull.Tls.Client (
-	HttpPullTlsCl, HttpPullClArgs(..), TlsArgs(..)) where
+	HttpPullTlsCl, HttpPullTlsClArgs(..), HttpPullClArgs(..), TlsArgs(..)) where
 
 import Prelude hiding (filter)
 
@@ -28,9 +28,11 @@ data HttpPullTlsCl h = HttpPullTlsCl
 	(Pipe () XmlNode (HandleMonad h) ())
 	(Pipe XmlNode () (HandleMonad h) ())
 
+data HttpPullTlsClArgs h = HttpPullTlsClArgs (HttpPullClArgs h) TlsArgs
+
 instance XmlPusher HttpPullTlsCl where
 	type NumOfHandle HttpPullTlsCl = One
-	type PusherArgs HttpPullTlsCl = (HttpPullClArgs, TlsArgs)
+	type PusherArgs HttpPullTlsCl = HttpPullTlsClArgs
 	generate = makeHttpPull
 	readFrom (HttpPullTlsCl r _) = r
 	writeTo (HttpPullTlsCl _ w) = w
@@ -73,12 +75,13 @@ getBS i n = do
 	else (bs `BS.append`) <$> getBS i (n - BS.length bs)
 
 makeHttpPull :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
-	One h -> (HttpPullClArgs, TlsArgs) -> HandleMonad h (HttpPullTlsCl h)
-makeHttpPull (One h)
-	(HttpPullClArgs hn pn fp gp pl ip d gd, TlsArgs dn cs ca kcs) = do
+	One h -> HttpPullTlsClArgs h -> HandleMonad h (HttpPullTlsCl h)
+makeHttpPull (One h) (HttpPullTlsClArgs
+	(HttpPullClArgs hn pn fp gp pl ip d gd) (TlsArgs dn cs ca kcs)) = do
 	dr <- liftBase . atomically $ newTVar d
 	(inc, otc) <- do
 		(g :: SystemRNG) <- liftBase $ cprgCreate <$> createEntropyPool
 		(ic, oc) <- open' h dn cs kcs ca g
-		liftBase $ talkC (TChanHandle ic oc) hn pn fp gp pl ip dr gd
+		pll <- pl
+		liftBase $ talkC (TChanHandle ic oc) hn pn fp gp pll ip dr gd
 	return $ HttpPullTlsCl (fromTChan inc) (toTChan otc)

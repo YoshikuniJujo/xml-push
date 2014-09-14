@@ -27,8 +27,9 @@ instance XmlPusher HttpPullCl where
 	writeTo (HttpPullCl _ w) = w
 
 makeHttpPull :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
-	One h -> HttpPullClArgs -> HandleMonad h (HttpPullCl h)
+	One h -> HttpPullClArgs h -> HandleMonad h (HttpPullCl h)
 makeHttpPull (One h) (HttpPullClArgs hn pn fp gp pl ip d gdr) = do
 	dr <- liftBase . atomically $ newTVar d
-	(inc, otc) <- talkC h hn pn fp gp pl ip dr gdr
+	pll <- pl
+	(inc, otc) <- talkC h hn pn fp gp pll ip dr gdr
 	return $ HttpPullCl (fromTChan inc) (toTChan otc)

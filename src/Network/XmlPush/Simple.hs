@@ -16,9 +16,11 @@ data SimplePusher h = SimplePusher
 	(Pipe () XmlNode (HandleMonad h) ())
 	(Pipe XmlNode () (HandleMonad h) ())
 
+data SimplePusherArgs h = SimplePusherArgsNull
+
 instance XmlPusher SimplePusher where
 	type NumOfHandle SimplePusher = One
-	type PusherArgs SimplePusher = ()
+	type PusherArgs SimplePusher = SimplePusherArgs
 	generate (One h) _ = simplePusher h
 	readFrom (SimplePusher r _) = r
 	writeTo (SimplePusher _ w) = w

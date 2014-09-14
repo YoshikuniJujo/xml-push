@@ -26,7 +26,7 @@ import Network.Sasl
 
 import qualified Data.ByteString as BS
 
-data XmppArgs = XmppArgs {
+data XmppArgs h = XmppArgs {
 	mechanisms :: [BS.ByteString],
 	myJid :: Jid, passowrd :: BS.ByteString,
 	yourJid :: Jid,

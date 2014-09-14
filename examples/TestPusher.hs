@@ -14,7 +14,7 @@ import Text.XML.Pipe
 import Network.XmlPush
 
 testPusher :: XmlPusher xp =>
-	xp Handle -> NumOfHandle xp Handle -> PusherArgs xp -> IO ()
+	xp Handle -> NumOfHandle xp Handle -> PusherArgs xp Handle -> IO ()
 testPusher tp hs as = do
 	xp <- (`asTypeOf` tp) <$> generate hs as
 	void . forkIO . runPipe_ $ readFrom xp

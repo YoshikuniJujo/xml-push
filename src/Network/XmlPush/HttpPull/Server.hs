@@ -25,7 +25,7 @@ instance XmlPusher HttpPullSv where
 	writeTo (HttpPullSv _ w) = w
 
 makeHttpPull :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
-	One h -> HttpPullSvArgs -> HandleMonad h (HttpPullSv h)
+	One h -> HttpPullSvArgs h -> HandleMonad h (HttpPullSv h)
 makeHttpPull (One h) (HttpPullSvArgs ip ep) = do
 	(inc, otc) <- runXml h ip ep (convert id)
 	return $ HttpPullSv (fromTChan inc) (toTChan otc)

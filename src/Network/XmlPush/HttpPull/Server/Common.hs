@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, PackageImports #-}
+{-# LANGUAGE OverloadedStrings, FlexibleContexts, PackageImports #-}
 
 module Network.XmlPush.HttpPull.Server.Common (HttpPullSvArgs(..), runXml) where
 
@@ -20,24 +20,25 @@ import qualified Data.ByteString.Lazy as LBS
 
 data HttpPullSvArgs h = HttpPullSvArgs {
 	isPoll :: XmlNode -> Bool,
-	noPending :: XmlNode
+	noPending :: XmlNode,
+	youNeedResponse :: XmlNode -> Bool
 	}
 
 runXml :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
-	h -> (XmlNode -> Bool) -> XmlNode ->
+	h -> (XmlNode -> Bool) -> XmlNode -> (XmlNode -> Bool) ->
 	Pipe XmlNode XmlNode (HandleMonad h) () ->
 	HandleMonad h (TChan XmlNode, TChan XmlNode)
-runXml h ip ep cn = do
+runXml h ip ep ynr cn = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
-	_ <- liftBaseDiscard forkIO . runPipe_ $ talk h ip ep inc otc cn
+	_ <- liftBaseDiscard forkIO . runPipe_ $ talk h ip ep ynr inc otc cn
 	return (inc, otc)
 
 talk :: (HandleLike h, MonadBase IO (HandleMonad h)) =>
-	h -> (XmlNode -> Bool) -> XmlNode ->
+	h -> (XmlNode -> Bool) -> XmlNode -> (XmlNode -> Bool) ->
 	TChan XmlNode -> TChan XmlNode -> Pipe XmlNode XmlNode (HandleMonad h) () ->
 	Pipe () () (HandleMonad h) ()
-talk h ip ep inc otc cn = do
+talk h ip ep ynr inc otc cn = do
 	r <- lift $ getRequest h
 	lift . liftBase . print $ requestPath r
 	rns <- requestBody r
@@ -46,6 +47,18 @@ talk h ip ep inc otc cn = do
 		=$= xmlNode []
 		=$= cn
 		=$= toList
+	case rns of
+		[rn]	| ip rn -> (flushOr otc ep =$=) . (await >>=)
+				. maybe (return ()) $ \n -> lift . putResponse h
+					. responseP $ LBS.fromChunks [xmlString [n]]
+			| not $ ynr rn -> do
+				mapM_ yield rns =$= toTChan inc
+				lift . putResponse h $ responseP ""
+		_ -> do	mapM_ yield rns =$= toTChan inc
+			(fromTChan otc =$=) . (await >>=) . maybe (return ()) $
+				\n -> lift . putResponse h . responseP
+					$ LBS.fromChunks [xmlString [n]]
+		{-
 	if case rns of [n] -> ip n; _ -> False
 	then (flushOr otc ep =$=) . (await >>=) . maybe (return ()) $ \n ->
 		lift . putResponse h . responseP $ LBS.fromChunks [xmlString [n]]
@@ -53,7 +66,8 @@ talk h ip ep inc otc cn = do
 		(fromTChan otc =$=) . (await >>=) . maybe (return ()) $ \n ->
 			lift . putResponse h . responseP
 				$ LBS.fromChunks [xmlString [n]]
-	talk h ip ep inc otc cn
+				-}
+	talk h ip ep ynr inc otc cn
 
 responseP :: (HandleLike h, MonadBase IO (HandleMonad h)) =>
 	LBS.ByteString -> Response Pipe h

@@ -22,7 +22,7 @@ main = do
 		(h, _, _) <- accept soc
 		void . forkIO $ testPusher (undefined :: HttpPullTlsSv Handle)
 			(One h) (HttpPullTlsSvArgs
-				(HttpPullSvArgs isPll endPoll)
+				(HttpPullSvArgs isPll endPoll needResponse)
 				(TlsArgs gtNm ["TLS_RSA_WITH_AES_128_CBC_SHA"]
 					(Just ca) [(k, c)]))
 
@@ -36,3 +36,7 @@ endPoll = XmlNode (nullQ "nothing") [] [] []
 gtNm :: XmlNode -> Maybe String
 gtNm (XmlNode (_, "name") _ _ [XmlCharData n]) = Just $ BSC.unpack n
 gtNm _ = Nothing
+
+needResponse :: XmlNode -> Bool
+needResponse (XmlNode (_, "monologue") _ _ _) = False
+needResponse _ = True

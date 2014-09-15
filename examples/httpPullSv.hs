@@ -16,7 +16,7 @@ main = do
 		(h, _, _) <- accept soc
 		void . forkIO $ testPusher
 			(undefined :: HttpPullSv Handle) (One h)
-			(HttpPullSvArgs isPll endPoll)
+			(HttpPullSvArgs isPll endPoll needResponse)
 
 isPll :: XmlNode -> Bool
 isPll (XmlNode (_, "poll") _ _ _) = True
@@ -24,3 +24,7 @@ isPll _ = False
 
 endPoll :: XmlNode
 endPoll = XmlNode (nullQ "nothing") [] [] []
+
+needResponse :: XmlNode -> Bool
+needResponse (XmlNode (_, "monologue") _ _ _) = False
+needResponse _ = True

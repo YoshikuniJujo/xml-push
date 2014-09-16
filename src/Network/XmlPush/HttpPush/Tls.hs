@@ -20,11 +20,12 @@ import Data.HandleLike
 import Data.Pipe
 import Data.Pipe.Flow
 import Data.Pipe.TChan
-import Data.X509
+import Data.X509 hiding (getCertificate)
 import Data.X509.CertificateStore
 import Text.XML.Pipe
 import Network.TigHTTP.Server
 import Network.PeyoTLS.ReadFile
+import Network.PeyoTLS.Server (getCertificate)
 import Network.PeyoTLS.Client (ValidateHandle)
 import "crypto-random" Crypto.Random
 
@@ -45,7 +46,8 @@ tlsArgsCl = TC.TlsArgs
 
 type TlsArgsSv = TS.TlsArgs
 
-tlsArgsSv :: (XmlNode -> Maybe String) -> [Cl.CipherSuite] ->
+tlsArgsSv :: (XmlNode -> Maybe String) ->
+	(XmlNode -> Maybe (SignedCertificate -> Bool)) -> [Cl.CipherSuite] ->
 	Maybe CertificateStore -> [(CertSecretKey, CertificateChain)] -> TlsArgsSv
 tlsArgsSv = TS.TlsArgs
 
@@ -74,11 +76,11 @@ instance XmlPusher HttpPushTls where
 makeHttpPushTls :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	h -> h -> HttpPushTlsArgs h -> HandleMonad h (HttpPushTls h)
 makeHttpPushTls ch sh (HttpPushTlsArgs (HttpPushArgs hn pn pt gp wr)
-	(TC.TlsArgs dn cs ca kcs) (TS.TlsArgs gn cs' mca' kcs')) = do
+	(TC.TlsArgs dn cs ca kcs) (TS.TlsArgs gn cc cs' mca' kcs')) = do
 	when (dn /= hn) $ error "makeHttpPushTls: conflicted domain name"
 	v <- liftBase . atomically $ newTVar False
 	(ci, co) <- clientC ch hn pn pt gp cs ca kcs
-	(si, so) <- talk wr sh gn cs' mca' kcs'
+	(si, so) <- talk wr sh gn cc cs' mca' kcs'
 	return $ HttpPushTls v ci co si so
 
 clientC :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
@@ -101,11 +103,11 @@ clientC h hn pn pt gp cs ca kcs = do
 	return (inc, otc)
 
 talk :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
-	(XmlNode -> Bool) -> h ->
-	(XmlNode -> Maybe String) -> [Sv.CipherSuite] ->
+	(XmlNode -> Bool) -> h -> (XmlNode -> Maybe String) ->
+	(XmlNode -> Maybe (SignedCertificate -> Bool)) -> [Sv.CipherSuite] ->
 	Maybe CertificateStore -> [(CertSecretKey, CertificateChain)] ->
 	HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
-talk wr h gn cs mca kcs = do
+talk wr h gn cc cs mca kcs = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
 	g <- liftBase (cprgCreate <$> createEntropyPool :: IO SystemRNG)
@@ -117,6 +119,7 @@ talk wr h gn cs mca kcs = do
 				=$= xmlEvent
 				=$= convert fromJust
 				=$= xmlNode []
+				=$= checkCert t cc
 				=$= checkName t gn
 				=$= checkReply wr otc
 				=$= toTChan inc
@@ -125,6 +128,16 @@ talk wr h gn cs mca kcs = do
 					Just n -> LBS.fromChunks [xmlString [n]]
 					_ -> "")
 	return (inc, otc)
+
+checkCert :: HandleLike h => Sv.TlsHandle h g ->
+	(XmlNode -> Maybe (SignedCertificate -> Bool)) ->
+	Pipe XmlNode XmlNode (Sv.TlsM h g) ()
+checkCert t cc = (await >>=) . maybe (return ()) $ \n -> do
+	let ck = maybe (const True) id $ cc n
+	c <- lift $ getCertificate t
+	unless (ck c) $ error "checkCert: bad certificate"
+	yield n
+	checkCert t cc
 
 checkName :: HandleLike h => Sv.TlsHandle h g -> (XmlNode -> Maybe String) ->
 	Pipe XmlNode XmlNode (Sv.TlsM h g) ()

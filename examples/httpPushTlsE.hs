@@ -22,7 +22,8 @@ main = do
 		(HttpPushArgs "localhost" 80 "" gtPth wntRspns)
 		(tlsArgsCl "localhost" ["TLS_RSA_WITH_AES_128_CBC_SHA"] ca
 			[(k', c')])
-		(tlsArgsSv gtNm ["TLS_RSA_WITH_AES_128_CBC_SHA"]
+		(tlsArgsSv gtNm (const Nothing)
+			["TLS_RSA_WITH_AES_128_CBC_SHA"]
 			(Just ca) [(k', c')]) )
 
 wntRspns :: XmlNode -> Bool

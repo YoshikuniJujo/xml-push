@@ -1,6 +1,6 @@
 {-# LANGUAGE TypeFamilies, PackageImports #-}
 
-module Network.XmlPush.Simple (SimplePusher) where
+module Network.XmlPush.Simple (SimplePusher, SimplePusherArgs(..)) where
 
 import "monads-tf" Control.Monad.Trans
 import Control.Monad

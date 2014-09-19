@@ -27,7 +27,7 @@ main = do
 		testPusher (undefined :: HttpPushTls Handle) (Two vch vsh)
 			(HttpPushTlsArgs
 				(HttpPushArgs getClientHandle Nothing
-					"Yoshikuni" 8080 "" gtPth wntRspns)
+					("Yoshikuni", 8080, "") gtPth wntRspns)
 				(tlsArgsCl "Yoshikuni"
 					["TLS_RSA_WITH_AES_128_CBC_SHA"]
 						ca [(k', c')])

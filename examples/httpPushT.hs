@@ -22,7 +22,7 @@ main = do
 		vch <- atomically $ newTVar Nothing
 		testPusher (undefined :: HttpPush Handle) (Two vch vsh)
 			(HttpPushArgs getClientHandle Nothing
-				"localhost" 8080 "/" gtPth wntRspns)
+				("localhost", 8080, "/") gtPth wntRspns)
 
 getClientHandle :: XmlNode -> Maybe (IO Handle)
 getClientHandle (XmlNode (_, "client") [] [] [XmlCharData hn]) = Just $ do

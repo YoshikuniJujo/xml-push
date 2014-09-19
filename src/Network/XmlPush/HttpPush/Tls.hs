@@ -76,20 +76,20 @@ instance XmlPusher HttpPushTls where
 makeHttpPushTls :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	TVar (Maybe h) -> TVar (Maybe h) ->
 	HttpPushTlsArgs h -> HandleMonad h (HttpPushTls h)
-makeHttpPushTls vch vsh (HttpPushTlsArgs (HttpPushArgs gc gs hn pn pt gp wr)
+makeHttpPushTls vch vsh (HttpPushTlsArgs (HttpPushArgs gc gs (hn, pn, pt) gp wr)
 	(TC.TlsArgs dn cs ca kcs) (TS.TlsArgs gn cc cs' mca' kcs')) = do
 	when (dn /= hn) $ error "makeHttpPushTls: conflicted domain name"
 	v <- liftBase . atomically $ newTVar False
-	(ci, co) <- clientC vch hn pn pt gp cs ca kcs
+	(ci, co) <- clientC vch (hn, pn, pt) gp cs ca kcs
 	(si, so) <- talk wr vsh gn cc cs' mca' kcs' vch gc gs
 	return $ HttpPushTls v ci co si so
 
 clientC :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
-	TVar (Maybe h) -> String -> Int -> FilePath -> (XmlNode -> FilePath) ->
+	TVar (Maybe h) -> (String, Int, FilePath) -> (XmlNode -> FilePath) ->
 	[Cl.CipherSuite] -> CertificateStore ->
 	[(CertSecretKey, CertificateChain)] ->
 	HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
-clientC vh hn pn pt gp cs ca kcs = do
+clientC vh (hn, pn, pt) gp cs ca kcs = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
 	(g :: SystemRNG) <- liftBase $ cprgCreate <$> createEntropyPool

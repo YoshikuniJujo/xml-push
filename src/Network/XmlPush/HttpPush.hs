@@ -48,16 +48,16 @@ instance XmlPusher HttpPush where
 makeHttpPush :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	TVar (Maybe h) -> TVar (Maybe h) ->
 	HttpPushArgs h -> HandleMonad h (HttpPush h)
-makeHttpPush vch vsh (HttpPushArgs gc gs hn pn pt gp wr) = do
+makeHttpPush vch vsh (HttpPushArgs gc gs (hn, pn, pt) gp wr) = do
 	v <- liftBase . atomically $ newTVar False
-	(ci, co) <- clientC vch hn pn pt gp
+	(ci, co) <- clientC vch (hn, pn, pt) gp
 	(si, so) <- talk wr vsh vch gc gs
 	return $ HttpPush v ci co si so
 
 clientC :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
-	TVar (Maybe h) -> String -> Int -> FilePath -> (XmlNode -> FilePath) ->
+	TVar (Maybe h) -> (String, Int, FilePath) -> (XmlNode -> FilePath) ->
 	HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
-clientC vh hn pn pt gp = do
+clientC vh (hn, pn, pt) gp = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
 	void . liftBaseDiscard forkIO $ do

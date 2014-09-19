@@ -46,9 +46,11 @@ instance XmlPusher HttpPush where
 			(const True, clientWriteChan hp) ]
 
 makeHttpPush :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
-	TVar (Maybe h) -> TVar (Maybe h) ->
+	(Maybe h) -> (Maybe h) ->
 	HttpPushArgs h -> HandleMonad h (HttpPush h)
-makeHttpPush vch vsh (HttpPushArgs gc gs hi gp wr) = do
+makeHttpPush mch msh (HttpPushArgs gc gs hi gp wr) = do
+	vch <- liftBase . atomically $ newTVar mch
+	vsh <- liftBase . atomically $ newTVar msh
 	v <- liftBase . atomically $ newTVar False
 	vhi <- liftBase . atomically $ newTVar hi
 	(ci, co) <- clientC vch vhi gp

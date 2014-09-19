@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Control.Monad
-import Control.Concurrent.STM
 import System.IO
 import Text.XML.Pipe
 import Network
@@ -20,14 +19,9 @@ main = do
 	c' <- readCertificateChain ["certs/localhost.sample_crt"]
 	forever  $ do
 		(sh, _, _) <- accept soc
---		ch <- connectTo "localhost" $ PortNumber 8080
-		vsh <- atomically . newTVar $ Just sh
---		vch <- atomically . newTVar $ Just ch
-		vch <- atomically $ newTVar Nothing
-		testPusher (undefined :: HttpPushTls Handle) (Two vch vsh)
+		testPusher (undefined :: HttpPushTls Handle) (Two Nothing $ Just sh)
 			(HttpPushTlsArgs
 				(HttpPushArgs getClientHandle Nothing
---					("Yoshikuni", 8080, "") gtPth wntRspns)
 					Nothing gtPth wntRspns)
 				(tlsArgsCl "Yoshikuni"
 					["TLS_RSA_WITH_AES_128_CBC_SHA"]

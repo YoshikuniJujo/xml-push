@@ -74,10 +74,12 @@ instance XmlPusher HttpPushTls where
 			(const True, clientWriteChan hp) ]
 
 makeHttpPushTls :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
-	TVar (Maybe h) -> TVar (Maybe h) ->
+	Maybe h -> Maybe h ->
 	HttpPushTlsArgs h -> HandleMonad h (HttpPushTls h)
-makeHttpPushTls vch vsh (HttpPushTlsArgs (HttpPushArgs gc gs hi gp wr)
+makeHttpPushTls mch msh (HttpPushTlsArgs (HttpPushArgs gc gs hi gp wr)
 	(TC.TlsArgs dn cs ca kcs) (TS.TlsArgs gn cc cs' mca' kcs')) = do
+	vch <- liftBase . atomically $ newTVar mch
+	vsh <- liftBase . atomically $ newTVar msh
 	case hi of
 		Just (hn, _, _) -> when (dn /= hn) $
 			error "makeHttpPushTls: conflicted domain name"

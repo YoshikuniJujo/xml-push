@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+import Control.Concurrent.STM
 import System.IO
 import Text.XML.Pipe
 import Network
@@ -10,9 +11,10 @@ import TestPusher
 main :: IO ()
 main = do
 	ch <- connectTo "localhost" $ PortNumber 80
+	vch <- atomically . newTVar $ Just ch
 	soc <- listenOn $ PortNumber 8080
 	(sh, _, _) <- accept soc
-	testPusher (undefined :: HttpPush Handle) (Two ch sh)
+	testPusher (undefined :: HttpPush Handle) (Two vch sh)
 		(HttpPushArgs "localhost" 80 "/" gtPth wntRspns)
 
 wntRspns :: XmlNode -> Bool

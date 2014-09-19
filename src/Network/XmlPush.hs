@@ -5,6 +5,7 @@ module Network.XmlPush (XmlPusher(..), Zero(..), One(..), Two(..)) where
 import "monads-tf" Control.Monad.Error
 import Control.Monad.Base
 import Control.Monad.Trans.Control
+import Control.Concurrent.STM
 import Data.HandleLike
 import Data.Pipe
 import Text.XML.Pipe
@@ -25,4 +26,4 @@ class XmlPusher xp where
 
 data Zero a = Zero deriving Show
 data One a = One a deriving Show
-data Two a = Two a a deriving Show
+data Two a = Two (TVar (Maybe a)) a

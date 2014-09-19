@@ -45,7 +45,7 @@ instance XmlPusher HttpPush where
 			(const True, clientWriteChan hp) ]
 
 makeHttpPush :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
-	h -> h -> HttpPushArgs h -> HandleMonad h (HttpPush h)
+	TVar (Maybe h) -> h -> HttpPushArgs h -> HandleMonad h (HttpPush h)
 makeHttpPush ch sh (HttpPushArgs hn pn pt gp wr) = do
 	v <- liftBase . atomically $ newTVar False
 	(ci, co) <- clientC ch hn pn pt gp
@@ -53,9 +53,14 @@ makeHttpPush ch sh (HttpPushArgs hn pn pt gp wr) = do
 	return $ HttpPush v ci co si so
 
 clientC :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
-	h -> String -> Int -> FilePath -> (XmlNode -> FilePath) ->
+	TVar (Maybe h) -> String -> Int -> FilePath -> (XmlNode -> FilePath) ->
 	HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
-clientC h hn pn pt gp = do
+clientC vh hn pn pt gp = do
+	h <- liftBase . atomically $ do
+		mh <- readTVar vh
+		case mh of
+			Just h -> return h
+			_ -> retry
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
 	void . liftBaseDiscard forkIO . runPipe_ $ fromTChan otc

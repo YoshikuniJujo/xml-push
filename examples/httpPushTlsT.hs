@@ -20,17 +20,25 @@ main = do
 	c' <- readCertificateChain ["certs/localhost.sample_crt"]
 	forever  $ do
 		(sh, _, _) <- accept soc
-		ch <- connectTo "localhost" $ PortNumber 8080
-		vch <- atomically . newTVar $ Just ch
-		testPusher (undefined :: HttpPushTls Handle) (Two vch sh)
+--		ch <- connectTo "localhost" $ PortNumber 8080
+		vsh <- atomically . newTVar $ Just sh
+--		vch <- atomically . newTVar $ Just ch
+		vch <- atomically $ newTVar Nothing
+		testPusher (undefined :: HttpPushTls Handle) (Two vch vsh)
 			(HttpPushTlsArgs
-				(HttpPushArgs "Yoshikuni" 8080 "" gtPth wntRspns)
+				(HttpPushArgs getClientHandle Nothing
+					"Yoshikuni" 8080 "" gtPth wntRspns)
 				(tlsArgsCl "Yoshikuni"
 					["TLS_RSA_WITH_AES_128_CBC_SHA"]
 						ca [(k', c')])
 				(tlsArgsSv gtNm (const Nothing)
 					["TLS_RSA_WITH_AES_128_CBC_SHA"]
 					(Just ca) [(k', c')]) )
+
+getClientHandle :: XmlNode -> Maybe (IO Handle)
+getClientHandle (XmlNode (_, "client") [] [] [XmlCharData hn]) = Just $ do
+	connectTo (BSC.unpack hn) $ PortNumber 8080
+getClientHandle _ = Nothing
 
 wntRspns :: XmlNode -> Bool
 wntRspns (XmlNode (_, "monologue") _ [] []) = False

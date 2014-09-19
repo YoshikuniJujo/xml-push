@@ -18,15 +18,21 @@ main = do
 	c' <- readCertificateChain ["certs/yoshikuni.sample_crt"]
 	ch <- connectTo "localhost" $ PortNumber 80
 	vch <- atomically . newTVar $ Just ch
-	soc <- listenOn $ PortNumber 8080
-	(sh, _, _) <- accept soc
-	testPusher (undefined :: HttpPushTls Handle) (Two vch sh) (HttpPushTlsArgs
-		(HttpPushArgs "localhost" 80 "" gtPth wntRspns)
+	vsh <- atomically $ newTVar Nothing
+	testPusher (undefined :: HttpPushTls Handle) (Two vch vsh) (HttpPushTlsArgs
+		(HttpPushArgs (const Nothing) getServerHandle
+			"localhost" 80 "" gtPth wntRspns)
 		(tlsArgsCl "localhost" ["TLS_RSA_WITH_AES_128_CBC_SHA"] ca
 			[(k', c')])
 		(tlsArgsSv gtNm (const Nothing)
 			["TLS_RSA_WITH_AES_128_CBC_SHA"]
 			(Just ca) [(k', c')]) )
+
+getServerHandle :: Maybe (IO Handle)
+getServerHandle = Just $ do
+	soc <- listenOn $ PortNumber 8080
+	(h, _, _) <- accept soc
+	return h
 
 wntRspns :: XmlNode -> Bool
 wntRspns (XmlNode (_, "monologue") _ [] []) = False

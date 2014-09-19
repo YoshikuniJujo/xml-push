@@ -26,4 +26,4 @@ class XmlPusher xp where
 
 data Zero a = Zero deriving Show
 data One a = One a deriving Show
-data Two a = Two (TVar (Maybe a)) a
+data Two a = Two (TVar (Maybe a)) (TVar (Maybe a))

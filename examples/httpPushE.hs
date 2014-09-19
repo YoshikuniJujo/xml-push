@@ -12,10 +12,18 @@ main :: IO ()
 main = do
 	ch <- connectTo "localhost" $ PortNumber 80
 	vch <- atomically . newTVar $ Just ch
+--	soc <- listenOn $ PortNumber 8080
+--	(sh, _, _) <- accept soc
+	vsh <- atomically $ newTVar Nothing
+	testPusher (undefined :: HttpPush Handle) (Two vch vsh)
+		(HttpPushArgs (const Nothing) getServerHandle
+			"localhost" 80 "/" gtPth wntRspns)
+
+getServerHandle :: Maybe (IO Handle)
+getServerHandle = Just $ do
 	soc <- listenOn $ PortNumber 8080
-	(sh, _, _) <- accept soc
-	testPusher (undefined :: HttpPush Handle) (Two vch sh)
-		(HttpPushArgs "localhost" 80 "/" gtPth wntRspns)
+	(h, _, _) <- accept soc
+	return h
 
 wntRspns :: XmlNode -> Bool
 wntRspns (XmlNode (_, "monologue") _ [] []) = False

@@ -24,6 +24,8 @@ import Network.TigHTTP.Types
 import qualified Data.ByteString.Lazy as LBS
 
 data HttpPushArgs h = HttpPushArgs {
+	getClient :: XmlNode -> Maybe (HandleMonad h h),
+	getServer :: Maybe (HandleMonad h h),
 	hostName :: String,
 	portNumber :: Int,
 	basePath :: FilePath,

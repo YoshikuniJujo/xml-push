@@ -76,20 +76,25 @@ instance XmlPusher HttpPushTls where
 makeHttpPushTls :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	TVar (Maybe h) -> TVar (Maybe h) ->
 	HttpPushTlsArgs h -> HandleMonad h (HttpPushTls h)
-makeHttpPushTls vch vsh (HttpPushTlsArgs (HttpPushArgs gc gs (hn, pn, pt) gp wr)
+makeHttpPushTls vch vsh (HttpPushTlsArgs (HttpPushArgs gc gs hi gp wr)
 	(TC.TlsArgs dn cs ca kcs) (TS.TlsArgs gn cc cs' mca' kcs')) = do
-	when (dn /= hn) $ error "makeHttpPushTls: conflicted domain name"
+	case hi of
+		Just (hn, _, _) -> when (dn /= hn) $
+			error "makeHttpPushTls: conflicted domain name"
+		_ -> return ()
 	v <- liftBase . atomically $ newTVar False
-	(ci, co) <- clientC vch (hn, pn, pt) gp cs ca kcs
-	(si, so) <- talk wr vsh gn cc cs' mca' kcs' vch gc gs
+	vhi <- liftBase . atomically $ newTVar hi
+	(ci, co) <- clientC vch vhi gp cs ca kcs
+	(si, so) <- talk wr vsh gn cc cs' mca' kcs' vch vhi gc gs
 	return $ HttpPushTls v ci co si so
 
 clientC :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
-	TVar (Maybe h) -> (String, Int, FilePath) -> (XmlNode -> FilePath) ->
+	TVar (Maybe h) -> TVar (Maybe (String, Int, FilePath)) ->
+	(XmlNode -> FilePath) ->
 	[Cl.CipherSuite] -> CertificateStore ->
 	[(CertSecretKey, CertificateChain)] ->
 	HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
-clientC vh (hn, pn, pt) gp cs ca kcs = do
+clientC vh vhi gp cs ca kcs = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
 	(g :: SystemRNG) <- liftBase $ cprgCreate <$> createEntropyPool
@@ -98,6 +103,11 @@ clientC vh (hn, pn, pt) gp cs ca kcs = do
 			mh <- readTVar vh
 			case mh of
 				Just h -> return h
+				_ -> retry
+		(hn, pn, pt) <- liftBase . atomically $ do
+			mhi <- readTVar vhi
+			case mhi of
+				Just hi -> return hi
 				_ -> retry
 		(`Cl.run` g) $ do
 			t <- Cl.open' h hn cs kcs ca
@@ -113,10 +123,11 @@ talk :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	(XmlNode -> Bool) -> (TVar (Maybe h)) -> (XmlNode -> Maybe String) ->
 	(XmlNode -> Maybe (SignedCertificate -> Bool)) -> [Sv.CipherSuite] ->
 	Maybe CertificateStore -> [(CertSecretKey, CertificateChain)] ->
-	TVar (Maybe h) -> (XmlNode -> Maybe (HandleMonad h h)) ->
+	TVar (Maybe h) -> TVar (Maybe (String, Int, FilePath)) ->
+	(XmlNode -> Maybe (HandleMonad h h, String, Int, FilePath)) ->
 	Maybe (HandleMonad h h) ->
 	HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
-talk wr vh gn cc cs mca kcs vch gc mgs = do
+talk wr vh gn cc cs mca kcs vch vhi gc mgs = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
 	g <- liftBase (cprgCreate <$> createEntropyPool :: IO SystemRNG)
@@ -137,7 +148,7 @@ talk wr vh gn cc cs mca kcs vch gc mgs = do
 					=$= xmlEvent
 					=$= convert fromJust
 					=$= xmlNode []
-					=$= setClient vch gc
+					=$= setClient vch vhi gc
 					=$= checkCert t cc
 					=$= checkName t gn
 					=$= checkReply wr otc
@@ -172,13 +183,16 @@ svCheckName t n = do
 	return $ n `elem` ns
 
 setClient :: (MonadBase IO (HandleMonad h)) =>
-	TVar (Maybe h) -> (XmlNode -> Maybe (HandleMonad h h)) ->
+	TVar (Maybe h) -> TVar (Maybe (String, Int, FilePath)) ->
+	(XmlNode -> Maybe (HandleMonad h h, String, Int, FilePath)) ->
 	Pipe XmlNode XmlNode (Sv.TlsM h g) ()
-setClient vch gc = (await >>=) . maybe (return ()) $ \n -> do
+setClient vch vhi gc = (await >>=) . maybe (return ()) $ \n -> do
 	yield n
 	case gc n of
-		Just gh -> do
+		Just (gh, hn, pn, pt) -> do
 			h <- lift . lift $ lift gh
 			lift . liftBase . atomically . writeTVar vch $ Just h
+			lift . liftBase . atomically . writeTVar vhi
+				$ Just (hn, pn, pt)
 		_ -> return ()
-	setClient vch gc
+	setClient vch vhi gc

@@ -17,7 +17,7 @@ main = do
 	vsh <- atomically $ newTVar Nothing
 	testPusher (undefined :: HttpPush Handle) (Two vch vsh)
 		(HttpPushArgs (const Nothing) getServerHandle
-			("localhost", 80, "/") gtPth wntRspns)
+			(Just ("localhost", 80, "/")) gtPth wntRspns)
 
 getServerHandle :: Maybe (IO Handle)
 getServerHandle = Just $ do

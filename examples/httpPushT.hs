@@ -22,12 +22,15 @@ main = do
 		vch <- atomically $ newTVar Nothing
 		testPusher (undefined :: HttpPush Handle) (Two vch vsh)
 			(HttpPushArgs getClientHandle Nothing
-				("localhost", 8080, "/") gtPth wntRspns)
+--				(Just ("localhost", 8080, "/")) gtPth wntRspns)
+				Nothing gtPth wntRspns)
 
-getClientHandle :: XmlNode -> Maybe (IO Handle)
-getClientHandle (XmlNode (_, "client") [] [] [XmlCharData hn]) = Just $ do
---	print "hoge"
-	connectTo (BSC.unpack hn) $ PortNumber 8080
+getClientHandle :: XmlNode -> Maybe (IO Handle, String, Int, FilePath)
+getClientHandle (XmlNode (_, "client") [] [] [XmlCharData hn]) = Just (
+	connectTo (BSC.unpack hn) $ PortNumber 8080,
+	"localhost",
+	8080,
+	"/" )
 getClientHandle _ = Nothing
 
 wntRspns :: XmlNode -> Bool

@@ -27,7 +27,8 @@ main = do
 		testPusher (undefined :: HttpPushTls Handle) (Two vch vsh)
 			(HttpPushTlsArgs
 				(HttpPushArgs getClientHandle Nothing
-					("Yoshikuni", 8080, "") gtPth wntRspns)
+--					("Yoshikuni", 8080, "") gtPth wntRspns)
+					Nothing gtPth wntRspns)
 				(tlsArgsCl "Yoshikuni"
 					["TLS_RSA_WITH_AES_128_CBC_SHA"]
 						ca [(k', c')])
@@ -35,9 +36,12 @@ main = do
 					["TLS_RSA_WITH_AES_128_CBC_SHA"]
 					(Just ca) [(k', c')]) )
 
-getClientHandle :: XmlNode -> Maybe (IO Handle)
-getClientHandle (XmlNode (_, "client") [] [] [XmlCharData hn]) = Just $ do
-	connectTo (BSC.unpack hn) $ PortNumber 8080
+getClientHandle :: XmlNode -> Maybe (IO Handle, String, Int, FilePath)
+getClientHandle (XmlNode (_, "client") [] [] [XmlCharData hn]) = Just (
+	connectTo (BSC.unpack hn) $ PortNumber 8080,
+	"Yoshikuni",
+	8080,
+	"" )
 getClientHandle _ = Nothing
 
 wntRspns :: XmlNode -> Bool

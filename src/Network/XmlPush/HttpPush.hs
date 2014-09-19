@@ -48,16 +48,18 @@ instance XmlPusher HttpPush where
 makeHttpPush :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	TVar (Maybe h) -> TVar (Maybe h) ->
 	HttpPushArgs h -> HandleMonad h (HttpPush h)
-makeHttpPush vch vsh (HttpPushArgs gc gs (hn, pn, pt) gp wr) = do
+makeHttpPush vch vsh (HttpPushArgs gc gs hi gp wr) = do
 	v <- liftBase . atomically $ newTVar False
-	(ci, co) <- clientC vch (hn, pn, pt) gp
-	(si, so) <- talk wr vsh vch gc gs
+	vhi <- liftBase . atomically $ newTVar hi
+	(ci, co) <- clientC vch vhi gp
+	(si, so) <- talk wr vsh vch vhi gc gs
 	return $ HttpPush v ci co si so
 
 clientC :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
-	TVar (Maybe h) -> (String, Int, FilePath) -> (XmlNode -> FilePath) ->
+	TVar (Maybe h) -> TVar (Maybe (String, Int, FilePath)) ->
+	(XmlNode -> FilePath) ->
 	HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
-clientC vh (hn, pn, pt) gp = do
+clientC vh vhi gp = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
 	void . liftBaseDiscard forkIO $ do
@@ -65,6 +67,11 @@ clientC vh (hn, pn, pt) gp = do
 			mh <- readTVar vh
 			case mh of
 				Just h -> return h
+				_ -> retry
+		(hn, pn, pt) <- liftBase . atomically $ do
+			mhi <- readTVar vhi
+			case mhi of
+				Just hi -> return hi
 				_ -> retry
 		runPipe_ $ fromTChan otc
 			=$= filter isJust
@@ -76,9 +83,11 @@ clientC vh (hn, pn, pt) gp = do
 
 talk :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	(XmlNode -> Bool) -> (TVar (Maybe h)) -> (TVar (Maybe h)) ->
-	(XmlNode -> Maybe (HandleMonad h h)) -> Maybe (HandleMonad h h) ->
+	(TVar (Maybe (String, Int, FilePath))) ->
+	(XmlNode -> Maybe (HandleMonad h h, String, Int, FilePath)) ->
+	Maybe (HandleMonad h h) ->
 	HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
-talk wr vh vch gc mgs = do
+talk wr vh vch vhi gc mgs = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
 	void . liftBaseDiscard forkIO $ do
@@ -96,7 +105,7 @@ talk wr vh vch gc mgs = do
 				=$= xmlEvent
 				=$= convert fromJust
 				=$= xmlNode []
-				=$= setClient vch gc
+				=$= setClient vch vhi gc
 				=$= checkReply wr otc
 				=$= toTChan inc
 			fromTChan otc =$= await >>= maybe (return ()) (\mn ->
@@ -106,13 +115,16 @@ talk wr vh vch gc mgs = do
 	return (inc, otc)
 
 setClient :: (MonadBase IO (HandleMonad h)) =>
-	TVar (Maybe h) -> (XmlNode -> Maybe (HandleMonad h h)) ->
+	TVar (Maybe h) -> TVar (Maybe (String, Int, FilePath)) ->
+	(XmlNode -> Maybe (HandleMonad h h, String, Int, FilePath)) ->
 	Pipe XmlNode XmlNode (HandleMonad h) ()
-setClient vch gc = (await >>=) . maybe (return ()) $ \n -> do
+setClient vch vhi gc = (await >>=) . maybe (return ()) $ \n -> do
 	yield n
 	case gc n of
-		Just gh -> do
+		Just (gh, hn, pn, pt) -> do
 			h <- lift gh
 			lift . liftBase . atomically . writeTVar vch $ Just h
+			lift . liftBase . atomically . writeTVar vhi
+				$ Just (hn, pn, pt)
 		_ -> return ()
-	setClient vch gc
+	setClient vch vhi gc

@@ -112,7 +112,7 @@ clientC vh vhi gp cs ca kcs = do
 				Just hi -> return hi
 				_ -> retry
 		(`Cl.run` g) $ do
-			t <- Cl.open' h hn cs kcs ca
+			t <- Cl.open h cs kcs ca
 			runPipe_ $ fromTChan otc
 				=$= filter isJust
 				=$= convert fromJust

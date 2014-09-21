@@ -1,15 +1,24 @@
 {-# LANGUAGE TupleSections, TypeFamilies, FlexibleContexts #-}
 
-module TestPusher (XmlPusher(..), Zero(..), One(..), Two(..), testPusher) where
+module TestPusher (
+	XmlPusher(..), Zero(..), One(..), Two(..),
+	testPusher, checkFingerprint) where
 
 import Control.Applicative
 import Control.Monad
 import Control.Concurrent
 import Data.Maybe
+import Data.List
+import Data.Char
 import Data.Pipe
 import Data.Pipe.ByteString
+import Data.X509
+import Data.X509.Validation
 import System.IO
 import Text.XML.Pipe
+import Numeric
+
+import qualified Data.ByteString as BS
 
 import Network.XmlPush
 
@@ -25,3 +34,13 @@ testPusher tp hs as = do
 		=$= convert fromJust
 		=$= xmlNode []
 		=$= writeTo xp
+
+checkFingerprint :: [String] -> SignedCertificate -> Bool
+checkFingerprint fps c = cutFingerprint (getFingerprint c HashSHA256) `elem` fps
+
+cutFingerprint :: Fingerprint -> String
+cutFingerprint (Fingerprint bs) = lastN 29 .
+	intercalate ":" . map (map toUpper . flip showHex "") $ BS.unpack bs
+
+lastN :: Int -> [a] -> [a]
+lastN n xs = drop (length xs - n) xs

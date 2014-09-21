@@ -40,15 +40,7 @@ checkCertXml :: XmlNode -> Maybe (SignedCertificate -> Bool)
 checkCertXml = const $ Just checkCert
 
 checkCert :: SignedCertificate -> Bool
-checkCert c = cutFingerprint (getFingerprint c HashSHA256) `elem` [
-	"81:9A:16:4A:57:AE:82:92:78:E0" ]
-
-cutFingerprint :: Fingerprint -> String
-cutFingerprint (Fingerprint bs) = lastN 29 .
-	intercalate ":" . map (map toUpper . flip showHex "") $ BS.unpack bs
-
-lastN :: Int -> [a] -> [a]
-lastN n xs = drop (length xs - n) xs
+checkCert = checkFingerprint ["81:9A:16:4A:57:AE:82:92:78:E0"]
 
 getClientHandle :: XmlNode -> Maybe (IO Handle, String, Int, FilePath)
 getClientHandle (XmlNode (_, "client") [] [] [XmlCharData hn]) = Just (

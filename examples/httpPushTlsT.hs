@@ -1,12 +1,18 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Control.Monad
+import Data.List
+import Data.Char
+import Data.X509
+import Data.X509.Validation
 import System.IO
 import Text.XML.Pipe
 import Network
 import Network.XmlPush.HttpPush.Tls
 import Network.PeyoTLS.ReadFile
+import Numeric
 
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
 
 import TestPusher
@@ -23,12 +29,26 @@ main = do
 			(HttpPushTlsArgs
 				(HttpPushArgs getClientHandle Nothing
 					Nothing gtPth wntRspns)
-				(tlsArgsCl "Yoshikuni" (const Nothing)
+				(tlsArgsCl "Yoshikuni" checkCertXml
 					["TLS_RSA_WITH_AES_128_CBC_SHA"]
 						ca [(k', c')])
 				(tlsArgsSv gtNm (const Nothing)
 					["TLS_RSA_WITH_AES_128_CBC_SHA"]
 					(Just ca) [(k', c')]) )
+
+checkCertXml :: XmlNode -> Maybe (SignedCertificate -> Bool)
+checkCertXml = const $ Just checkCert
+
+checkCert :: SignedCertificate -> Bool
+checkCert c = cutFingerprint (getFingerprint c HashSHA256) `elem` [
+	"81:9A:16:4A:57:AE:82:92:78:E0" ]
+
+cutFingerprint :: Fingerprint -> String
+cutFingerprint (Fingerprint bs) = lastN 29 .
+	intercalate ":" . map (map toUpper . flip showHex "") $ BS.unpack bs
+
+lastN :: Int -> [a] -> [a]
+lastN n xs = drop (length xs - n) xs
 
 getClientHandle :: XmlNode -> Maybe (IO Handle, String, Int, FilePath)
 getClientHandle (XmlNode (_, "client") [] [] [XmlCharData hn]) = Just (

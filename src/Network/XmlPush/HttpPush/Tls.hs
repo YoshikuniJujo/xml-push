@@ -174,10 +174,11 @@ checkCert t cc = (await >>=) . maybe (return ()) $ \n -> do
 	yield n
 	checkCert t cc
 
-checkCertCl :: HandleLike h => Cl.TlsHandle h g ->
+checkCertCl :: (ValidateHandle h, CPRG g) => Cl.TlsHandle h g ->
 	(XmlNode -> Maybe (SignedCertificate -> Bool)) ->
 	Pipe XmlNode XmlNode (Cl.TlsM h g) ()
 checkCertCl t cc = (await >>=) . maybe (return ()) $ \n -> do
+	lift $ hlDebug t "medium" "begin checkCertCl"
 	let ck = maybe (const True) id $ cc n
 	c <- lift $ Cl.getCertificate t
 	unless (ck c) $ error "checkCert: bad certificate"

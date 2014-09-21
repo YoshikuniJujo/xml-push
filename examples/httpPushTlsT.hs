@@ -1,18 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 import Control.Monad
-import Data.List
-import Data.Char
 import Data.X509
-import Data.X509.Validation
 import System.IO
 import Text.XML.Pipe
 import Network
 import Network.XmlPush.HttpPush.Tls
 import Network.PeyoTLS.ReadFile
-import Numeric
 
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Char8 as BSC
 
 import TestPusher
@@ -29,7 +24,7 @@ main = do
 			(HttpPushTlsArgs
 				(HttpPushArgs getClientHandle Nothing
 					Nothing gtPth wntRspns)
-				(tlsArgsCl "Yoshikuni" checkCertXml
+				(tlsArgsCl "Yoshikuni" True checkCertXml
 					["TLS_RSA_WITH_AES_128_CBC_SHA"]
 						ca [(k', c')])
 				(tlsArgsSv gtNm (const Nothing)

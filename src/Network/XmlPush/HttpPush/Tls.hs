@@ -40,7 +40,7 @@ import Network.XmlPush.Tls.Server as TS
 
 type TlsArgsCl = TC.TlsArgs
 
-tlsArgsCl :: String ->
+tlsArgsCl :: String -> Bool ->
 	(XmlNode -> Maybe (SignedCertificate -> Bool)) ->
 	[Cl.CipherSuite] -> CertificateStore ->
 	[(CertSecretKey, CertificateChain)] -> TlsArgsCl
@@ -79,7 +79,7 @@ makeHttpPushTls :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	Maybe h -> Maybe h ->
 	HttpPushTlsArgs h -> HandleMonad h (HttpPushTls h)
 makeHttpPushTls mch msh (HttpPushTlsArgs (HttpPushArgs gc gs hi gp wr)
-	(TC.TlsArgs dn cc' cs ca kcs) (TS.TlsArgs gn cc cs' mca' kcs')) = do
+	(TC.TlsArgs dn cdn cc' cs ca kcs) (TS.TlsArgs gn cc cs' mca' kcs')) = do
 	vch <- liftBase . atomically $ newTVar mch
 	vsh <- liftBase . atomically $ newTVar msh
 	case hi of
@@ -88,18 +88,18 @@ makeHttpPushTls mch msh (HttpPushTlsArgs (HttpPushArgs gc gs hi gp wr)
 		_ -> return ()
 	v <- liftBase . atomically $ newTVar False
 	vhi <- liftBase . atomically $ newTVar hi
-	(ci, co) <- clientC vch vhi cc' gp cs ca kcs
+	(ci, co) <- clientC vch vhi cdn cc' gp cs ca kcs
 	(si, so) <- talk wr vsh gn cc cs' mca' kcs' vch vhi gc gs
 	return $ HttpPushTls v ci co si so
 
 clientC :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
-	TVar (Maybe h) -> TVar (Maybe (String, Int, FilePath)) ->
+	TVar (Maybe h) -> TVar (Maybe (String, Int, FilePath)) -> Bool ->
 	(XmlNode -> Maybe (SignedCertificate -> Bool)) ->
 	(XmlNode -> FilePath) ->
 	[Cl.CipherSuite] -> CertificateStore ->
 	[(CertSecretKey, CertificateChain)] ->
 	HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
-clientC vh vhi cc gp cs ca kcs = do
+clientC vh vhi cdn cc gp cs ca kcs = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
 	(g :: SystemRNG) <- liftBase $ cprgCreate <$> createEntropyPool
@@ -115,7 +115,7 @@ clientC vh vhi cc gp cs ca kcs = do
 				Just hi -> return hi
 				_ -> retry
 		(`Cl.run` g) $ do
-			t <- Cl.open h cs kcs ca
+			t <- (if cdn then Cl.open' h hn else Cl.open h) cs kcs ca
 			runPipe_ $ fromTChan otc
 				=$= filter isJust
 				=$= convert fromJust

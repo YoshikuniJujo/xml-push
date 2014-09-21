@@ -38,8 +38,9 @@ setNeedReply nr = await >>= maybe (return ()) (\(x, b) ->
 
 clientLoop :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	h -> String -> Int -> FilePath -> (XmlNode -> FilePath) ->
+	Pipe XmlNode XmlNode (HandleMonad h) () ->
 	Pipe XmlNode XmlNode (HandleMonad h) ()
-clientLoop h hn pn pt gp = (await >>=) . maybe (return ()) $ \n -> do
+clientLoop h hn pn pt gp p = (await >>=) . maybe (return ()) $ \n -> do
 	r <- lift . request h $ post hn pn (pt ++ "/" ++ gp n)
 		(Nothing, LBS.fromChunks [xmlString [n]])
 	return ()
@@ -47,7 +48,8 @@ clientLoop h hn pn pt gp = (await >>=) . maybe (return ()) $ \n -> do
 		=$= xmlEvent
 		=$= convert fromJust
 		=$= void (xmlNode [])
-	clientLoop h hn pn pt gp
+		=$= p
+	clientLoop h hn pn pt gp p
 
 checkReply :: MonadBase IO m => (XmlNode -> Bool) -> TChan (Maybe XmlNode) ->
 	Pipe XmlNode (XmlNode, Bool) m ()

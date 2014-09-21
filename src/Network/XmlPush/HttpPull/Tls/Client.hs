@@ -77,7 +77,7 @@ getBS i n = do
 makeHttpPull :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	One h -> HttpPullTlsClArgs h -> HandleMonad h (HttpPullTlsCl h)
 makeHttpPull (One h) (HttpPullTlsClArgs
-	(HttpPullClArgs hn pn fp gp pl ip d gd) (TlsArgs dn cs ca kcs)) = do
+	(HttpPullClArgs hn pn fp gp pl ip d gd) (TlsArgs dn _ cs ca kcs)) = do
 	dr <- liftBase . atomically $ newTVar d
 	(inc, otc) <- do
 		(g :: SystemRNG) <- liftBase $ cprgCreate <$> createEntropyPool

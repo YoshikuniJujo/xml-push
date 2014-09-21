@@ -17,7 +17,8 @@ main = do
 	testPusher (undefined :: HttpPullTlsCl Handle) (One h) (HttpPullTlsClArgs
 		(HttpPullClArgs "localhost" 443 "/" gtPth mkPoll
 			pendingQ (Just 10000000) drtn)
-		(TlsArgs "localhost" ["TLS_RSA_WITH_AES_128_CBC_SHA"] ca [(k, c)]) )
+		(TlsArgs "localhost" (const Nothing)
+			["TLS_RSA_WITH_AES_128_CBC_SHA"] ca [(k, c)]) )
 
 mkPoll :: IO XmlNode
 mkPoll = return $ XmlNode (nullQ "poll") [] [] []

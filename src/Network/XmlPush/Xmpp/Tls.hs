@@ -56,7 +56,7 @@ makeXmppTls :: (
 	MonadError (HandleMonad h), Error (ErrorType (HandleMonad h))
 	) => One h -> XmppTlsArgs h -> HandleMonad h (XmppTls h)
 makeXmppTls (One h)
-	(XmppTlsArgs (XmppArgs ms me ps you inr wr) (TlsArgs dn cs ca kcs)) = do
+	(XmppTlsArgs (XmppArgs ms me ps you inr wr) (TlsArgs dn _ cs ca kcs)) = do
 	nr <- liftBase $ atomically newTChan
 	wc <- liftBase $ atomically newTChan
 	(g :: SystemRNG) <- liftBase $ cprgCreate <$> createEntropyPool

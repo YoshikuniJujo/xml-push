@@ -40,7 +40,9 @@ import Network.XmlPush.Tls.Server as TS
 
 type TlsArgsCl = TC.TlsArgs
 
-tlsArgsCl :: String -> [Cl.CipherSuite] -> CertificateStore ->
+tlsArgsCl :: String ->
+	(XmlNode -> Maybe (SignedCertificate -> Bool)) ->
+	[Cl.CipherSuite] -> CertificateStore ->
 	[(CertSecretKey, CertificateChain)] -> TlsArgsCl
 tlsArgsCl = TC.TlsArgs
 
@@ -77,7 +79,7 @@ makeHttpPushTls :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	Maybe h -> Maybe h ->
 	HttpPushTlsArgs h -> HandleMonad h (HttpPushTls h)
 makeHttpPushTls mch msh (HttpPushTlsArgs (HttpPushArgs gc gs hi gp wr)
-	(TC.TlsArgs dn cs ca kcs) (TS.TlsArgs gn cc cs' mca' kcs')) = do
+	(TC.TlsArgs dn cc' cs ca kcs) (TS.TlsArgs gn cc cs' mca' kcs')) = do
 	vch <- liftBase . atomically $ newTVar mch
 	vsh <- liftBase . atomically $ newTVar msh
 	case hi of
@@ -86,17 +88,18 @@ makeHttpPushTls mch msh (HttpPushTlsArgs (HttpPushArgs gc gs hi gp wr)
 		_ -> return ()
 	v <- liftBase . atomically $ newTVar False
 	vhi <- liftBase . atomically $ newTVar hi
-	(ci, co) <- clientC vch vhi gp cs ca kcs
+	(ci, co) <- clientC vch vhi cc' gp cs ca kcs
 	(si, so) <- talk wr vsh gn cc cs' mca' kcs' vch vhi gc gs
 	return $ HttpPushTls v ci co si so
 
 clientC :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	TVar (Maybe h) -> TVar (Maybe (String, Int, FilePath)) ->
+	(XmlNode -> Maybe (SignedCertificate -> Bool)) ->
 	(XmlNode -> FilePath) ->
 	[Cl.CipherSuite] -> CertificateStore ->
 	[(CertSecretKey, CertificateChain)] ->
 	HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
-clientC vh vhi gp cs ca kcs = do
+clientC vh vhi cc gp cs ca kcs = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
 	(g :: SystemRNG) <- liftBase $ cprgCreate <$> createEntropyPool
@@ -116,7 +119,7 @@ clientC vh vhi gp cs ca kcs = do
 			runPipe_ $ fromTChan otc
 				=$= filter isJust
 				=$= convert fromJust
-				=$= clientLoop t hn pn pt gp
+				=$= clientLoop t hn pn pt gp (checkCertCl t cc)
 				=$= convert (, False)
 				=$= toTChan inc
 	return (inc, otc)
@@ -170,6 +173,16 @@ checkCert t cc = (await >>=) . maybe (return ()) $ \n -> do
 	unless (ck c) $ error "checkCert: bad certificate"
 	yield n
 	checkCert t cc
+
+checkCertCl :: HandleLike h => Cl.TlsHandle h g ->
+	(XmlNode -> Maybe (SignedCertificate -> Bool)) ->
+	Pipe XmlNode XmlNode (Cl.TlsM h g) ()
+checkCertCl t cc = (await >>=) . maybe (return ()) $ \n -> do
+	let ck = maybe (const True) id $ cc n
+	c <- lift $ Cl.getCertificate t
+	unless (ck c) $ error "checkCert: bad certificate"
+	yield n
+	checkCertCl t cc
 
 checkName :: HandleLike h => Sv.TlsHandle h g -> (XmlNode -> Maybe String) ->
 	Pipe XmlNode XmlNode (Sv.TlsM h g) ()

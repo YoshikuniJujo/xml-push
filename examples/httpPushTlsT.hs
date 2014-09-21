@@ -23,7 +23,7 @@ main = do
 			(HttpPushTlsArgs
 				(HttpPushArgs getClientHandle Nothing
 					Nothing gtPth wntRspns)
-				(tlsArgsCl "Yoshikuni"
+				(tlsArgsCl "Yoshikuni" (const Nothing)
 					["TLS_RSA_WITH_AES_128_CBC_SHA"]
 						ca [(k', c')])
 				(tlsArgsSv gtNm (const Nothing)

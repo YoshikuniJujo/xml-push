@@ -19,7 +19,8 @@ main = do
 	testPusher (undefined :: HttpPushTls Handle) (Two (Just ch) Nothing) (HttpPushTlsArgs
 		(HttpPushArgs (const Nothing) getServerHandle
 			(Just ("localhost", 80, "")) gtPth wntRspns)
-		(tlsArgsCl "localhost" ["TLS_RSA_WITH_AES_128_CBC_SHA"] ca
+		(tlsArgsCl "localhost" (const Nothing)
+			["TLS_RSA_WITH_AES_128_CBC_SHA"] ca
 			[(k', c')])
 		(tlsArgsSv gtNm (const Nothing)
 			["TLS_RSA_WITH_AES_128_CBC_SHA"]

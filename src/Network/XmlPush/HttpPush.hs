@@ -78,7 +78,7 @@ clientC vh vhi gp = do
 		runPipe_ $ fromTChan otc
 			=$= filter isJust
 			=$= convert fromJust
-			=$= clientLoop h hn pn pt gp
+			=$= clientLoop h hn pn pt gp (convert id)
 			=$= convert (, False)
 			=$= toTChan inc
 	return (inc, otc)

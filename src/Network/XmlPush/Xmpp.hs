@@ -57,7 +57,7 @@ makeXmpp (One h) (XmppArgs ms me ps you inr wr) = do
 		(Jid un d (Just rsc)) = me
 		ss = St [
 			("username", un), ("authcid", un), ("password", ps),
-			("cnonce", cn) ]
+			("cnonce", cn), ("nc", "00000001"), ("uri", "hoge") ]
 	void . (`evalStateT` ss) . runPipe $ fromHandleLike (THandle h)
 		=$= sasl d ms
 		=$= toHandleLike (THandle h)

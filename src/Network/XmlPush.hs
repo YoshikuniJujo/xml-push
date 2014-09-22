@@ -9,13 +9,14 @@ import Data.HandleLike
 import Data.Pipe
 import Text.XML.Pipe
 import Network.PeyoTLS.Client
+import Network.Sasl
 
 class XmlPusher xp where
 	type NumOfHandle xp :: * -> *
 	type PusherArgs xp :: * -> *
 	generate :: (
 		ValidateHandle h, MonadBaseControl IO (HandleMonad h),
-		MonadError (HandleMonad h), Error (ErrorType (HandleMonad h))
+		MonadError (HandleMonad h), SaslError (ErrorType (HandleMonad h))
 		) =>
 		NumOfHandle xp h -> PusherArgs xp h -> HandleMonad h (xp h)
 	readFrom :: (HandleLike h, MonadBase IO (HandleMonad h)) =>

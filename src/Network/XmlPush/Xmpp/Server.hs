@@ -1,4 +1,6 @@
-{-# LANGUAGE OverloadedStrings, TypeFamilies, FlexibleContexts,
+{-# LANGUAGE
+	PatternGuards,
+	OverloadedStrings, TypeFamilies, FlexibleContexts,
 	PackageImports #-}
 
 module Network.XmlPush.Xmpp.Server (
@@ -47,6 +49,12 @@ instance XmlPusher XmppServer where
 	readFrom (XmppServer r _) = r
 	writeTo (XmppServer _ w) = w
 
+samplePasswords :: [(BS.ByteString, BS.ByteString)]
+samplePasswords = [
+	("yoshikuni", "password"),
+	("yoshio", "password")
+	]
+
 makeXmppServer :: (
 	HandleLike h,
 	MonadError (HandleMonad h), SaslError (ErrorType (HandleMonad h)),
@@ -56,7 +64,7 @@ makeXmppServer (One h) (XmppServerArgs dn inr ynr) = do
 	rids <- liftBase $ atomically newTChan
 	(Just ns, st) <- (`runStateT` initXSt dn) . runPipe $ do
 		fromHandleLike (THandle h)
-			=$= sasl dn (retrieves dn)
+			=$= sasl dn (retrieves dn samplePasswords)
 			=$= toHandleLike (THandle h)
 		fromHandleLike (THandle h)
 			=$= bind dn []
@@ -138,37 +146,46 @@ initXSt dn = XSt {
 
 retrieves :: (
 	MonadState m, SaslState (StateType m),
-	MonadError m, SaslError (ErrorType m) ) => BS.ByteString -> [Retrieve m]
-retrieves dn = [
-	RTPlain retrievePln,
-	RTDigestMd5 $ retrieveDM5 dn,
-	RTScramSha1 retrieveSS1 ]
+	MonadError m, SaslError (ErrorType m) ) =>
+	BS.ByteString -> [(BS.ByteString, BS.ByteString)] -> [Retrieve m]
+retrieves dn ps = [
+	RTPlain $ retrievePln ps,
+	RTDigestMd5 $ retrieveDM5 dn ps,
+	RTScramSha1 $ retrieveSS1 ps ]
 
 retrievePln :: (
 	MonadState m, SaslState (StateType m),
 	MonadError m, SaslError (ErrorType m)) =>
+	[(BS.ByteString, BS.ByteString)] ->
 	BS.ByteString -> BS.ByteString -> BS.ByteString -> m ()
-retrievePln "" "yoshikuni" "password" = return ()
-retrievePln "" "yoshio" "password" = return ()
-retrievePln _ _ _ = throwError $ fromSaslError NotAuthorized "auth failure"
+retrievePln ps "" usr pwd0
+	| Just pwd <- lookup usr ps, pwd == pwd0 = return ()
+retrievePln _ _ _ _ = throwError $ fromSaslError NotAuthorized "auth failure"
 
 retrieveDM5 :: (
 	MonadState m, SaslState (StateType m),
 	MonadError m, SaslError (ErrorType m) ) =>
-	BS.ByteString -> BS.ByteString -> m BS.ByteString
-retrieveDM5 dn "yoshikuni" = return $ DM5.mkStored "yoshikuni" dn "password"
-retrieveDM5 dn "yoshio" = return $ DM5.mkStored "yoshio" dn "password"
-retrieveDM5 _ _ = throwError $ fromSaslError NotAuthorized "auth failure"
+	BS.ByteString -> [(BS.ByteString, BS.ByteString)] ->
+	BS.ByteString -> m BS.ByteString
+retrieveDM5 dn ps usr
+	| Just pwd <- lookup usr ps = return $ DM5.mkStored usr dn pwd
+retrieveDM5 _ _ _ = throwError $ fromSaslError NotAuthorized "auth failure"
 
 retrieveSS1 :: (
 	MonadState m, SaslState (StateType m),
-	MonadError m, SaslError (ErrorType m) ) => BS.ByteString ->
+	MonadError m, SaslError (ErrorType m) ) =>
+	[(BS.ByteString, BS.ByteString)] -> BS.ByteString ->
 	m (BS.ByteString, BS.ByteString, BS.ByteString, Int)
+retrieveSS1 ps usr | Just pwd <- lookup usr ps = let
+	slt = "pepper"; i = 4492; (stk, svk) = SS1.salt pwd slt i in
+	return (slt, stk, svk, i)
+	{-
 retrieveSS1 "yoshikuni" = return (slt, stk, svk, i)
 	where slt = "pepper"; i = 4492; (stk, svk) = SS1.salt "password" slt i
 retrieveSS1 "yoshio" = return (slt, stk, svk, i)
 	where slt = "sugar"; i = 4492; (stk, svk) = SS1.salt "password" slt i
-retrieveSS1 _ = throwError $ fromSaslError NotAuthorized "auth failure"
+	-}
+retrieveSS1 _ _ = throwError $ fromSaslError NotAuthorized "auth failure"
 
 type Pairs a = [(a, a)]
 data XSt = XSt { user :: Jid, rands :: [BS.ByteString], sSt :: Pairs BS.ByteString }

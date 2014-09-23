@@ -9,11 +9,16 @@ import Prelude hiding (filter)
 
 import "monads-tf" Control.Monad.State
 import "monads-tf" Control.Monad.Error
+import Control.Monad.Base
+import Control.Concurrent.STM
 import Data.Maybe
 import Data.HandleLike
 import Data.Pipe
 import Data.Pipe.Flow
+import Data.Pipe.IO
+import Text.XML.Pipe
 import Network.XMPiPe.Core.C2S.Server
+import Network.XMPiPe.Core.C2S.Client (toJid)
 import Network.Sasl
 
 import qualified Data.ByteString as BS
@@ -24,8 +29,8 @@ import Network.XmlPush
 import Network.XmlPush.Xmpp.Common
 
 data XmppServer h = XmppServer
-	(Pipe () Mpi (HandleMonad h) ())
-	(Pipe Mpi () (HandleMonad h) ())
+	(Pipe () XmlNode (HandleMonad h) ())
+	(Pipe XmlNode () (HandleMonad h) ())
 
 data Null h = Null
 
@@ -34,18 +39,15 @@ instance XmlPusher XmppServer where
 	type PusherArgs XmppServer = Null
 	generate = makeXmppServer
 	readFrom (XmppServer r _) = r
-		=$= convert fromMessage
-		=$= filter isJust
-		=$= convert fromJust
-	writeTo (XmppServer _ w) = convert (Message (tagsType "chat") . (: []))
-		=$= w
+	writeTo (XmppServer _ w) = w
 
 makeXmppServer :: (
 	HandleLike h,
-	MonadError (HandleMonad h), SaslError (ErrorType (HandleMonad h))
-	) =>
+	MonadError (HandleMonad h), SaslError (ErrorType (HandleMonad h)),
+	MonadBase IO (HandleMonad h) ) =>
 	One h -> Null h -> HandleMonad h (XmppServer h)
 makeXmppServer (One h) _ = do
+	rids <- liftBase $ atomically newTChan
 	(Just ns, _st) <- (`runStateT` initXSt) . runPipe $ do
 		fromHandleLike (THandle h)
 			=$= sasl "localhost" retrieves
@@ -53,9 +55,61 @@ makeXmppServer (One h) _ = do
 		fromHandleLike (THandle h)
 			=$= bind "localhost" []
 			=@= toHandleLike (THandle h)
-	let	r = fromHandleLike h =$= input ns
-		w = output =$= toHandleLike h
+	let	r = fromHandleLike h
+			=$= input ns
+			=$= debug
+			=$= setIds h rids
+			=$= convert fromMessage
+			=$= filter isJust
+			=$= convert fromJust
+		w = makeMpi rids
+			=$= debug
+			=$= output
+			=$= toHandleLike h
 	return $ XmppServer r w
+
+makeMpi :: MonadBase IO m => TChan BS.ByteString -> Pipe XmlNode Mpi m ()
+makeMpi rids = (await >>=) . maybe (return ()) $ \n -> do
+	e <- lift . liftBase . atomically $ isEmptyTChan rids
+	if e
+	then yield $ Message (tagsType "chat") [n]
+	else do	i <- lift . liftBase .atomically $ readTChan rids
+		lift . liftBase . putStrLn $ "makeMpi: " ++ show i
+		yield $ Iq (tagsType "return") {
+			tagId = Just i
+			} [n]
+	makeMpi rids
+
+setIds :: (HandleLike h, MonadBase IO (HandleMonad h)) =>
+	h -> TChan BS.ByteString -> Pipe Mpi Mpi (HandleMonad h) ()
+setIds h rids = (await >>=) . maybe (return ()) $ \mpi -> do
+	yield mpi
+	if sampleYouNeedResponse mpi
+	then when (isGetSet mpi) . lift . liftBase . atomically
+		$ writeTChan rids (fromJust $ getId mpi)
+	else lift $ returnEmpty h "hoge"
+	lift . liftBase . putStrLn $ "\nsetIds: " ++ show (getId mpi)
+	setIds h rids
+
+isGetSet :: Mpi -> Bool
+isGetSet (Iq Tags { tagType = Just "set" } _) = True
+isGetSet (Iq Tags { tagType = Just "get" } _) = True
+isGetSet _ = False
+
+getId :: Mpi -> Maybe BS.ByteString
+getId (Iq t _) = tagId t
+getId (Message t _) = tagId t
+getId _ = Nothing
+
+sampleYouNeedResponse :: Mpi -> Bool
+sampleYouNeedResponse (Iq _ [XmlNode (_, "no_response") _ _ _]) = False
+sampleYouNeedResponse _ = True
+
+returnEmpty :: (HandleLike h, MonadBase IO (HandleMonad h)) => h -> BS.ByteString -> HandleMonad h ()
+returnEmpty h i = runPipe_ $ yield e =$= output =$= debug =$= toHandleLike h
+	where
+	you = toJid "hoge@hogehost"
+	e = Iq (tagsType "result") { tagId = Just i, tagTo = Just you } []
 
 initXSt :: XSt
 initXSt = XSt {

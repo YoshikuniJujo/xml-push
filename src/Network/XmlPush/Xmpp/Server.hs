@@ -2,7 +2,7 @@
 	PackageImports #-}
 
 module Network.XmlPush.Xmpp.Server (
-	XmppServer, Null(..),
+	XmppServer, XmppServerArgs(..),
 	) where
 
 import Prelude hiding (filter)
@@ -32,11 +32,13 @@ data XmppServer h = XmppServer
 	(Pipe () XmlNode (HandleMonad h) ())
 	(Pipe XmlNode () (HandleMonad h) ())
 
-data Null h = Null
+data XmppServerArgs h = XmppServerArgs {
+	youNeedResponse :: XmlNode -> Bool
+	}
 
 instance XmlPusher XmppServer where
 	type NumOfHandle XmppServer = One
-	type PusherArgs XmppServer = Null
+	type PusherArgs XmppServer = XmppServerArgs
 	generate = makeXmppServer
 	readFrom (XmppServer r _) = r
 	writeTo (XmppServer _ w) = w
@@ -45,8 +47,8 @@ makeXmppServer :: (
 	HandleLike h,
 	MonadError (HandleMonad h), SaslError (ErrorType (HandleMonad h)),
 	MonadBase IO (HandleMonad h) ) =>
-	One h -> Null h -> HandleMonad h (XmppServer h)
-makeXmppServer (One h) _ = do
+	One h -> XmppServerArgs h -> HandleMonad h (XmppServer h)
+makeXmppServer (One h) (XmppServerArgs ynr) = do
 	rids <- liftBase $ atomically newTChan
 	(Just ns, _st) <- (`runStateT` initXSt) . runPipe $ do
 		fromHandleLike (THandle h)
@@ -58,7 +60,7 @@ makeXmppServer (One h) _ = do
 	let	r = fromHandleLike h
 			=$= input ns
 			=$= debug
-			=$= setIds h rids
+			=$= setIds h ynr rids
 			=$= convert fromMessage
 			=$= filter isJust
 			=$= convert fromJust
@@ -80,16 +82,16 @@ makeMpi rids = (await >>=) . maybe (return ()) $ \n -> do
 			} [n]
 	makeMpi rids
 
-setIds :: (HandleLike h, MonadBase IO (HandleMonad h)) =>
-	h -> TChan BS.ByteString -> Pipe Mpi Mpi (HandleMonad h) ()
-setIds h rids = (await >>=) . maybe (return ()) $ \mpi -> do
+setIds :: (HandleLike h, MonadBase IO (HandleMonad h)) => h ->
+	(XmlNode -> Bool) -> TChan BS.ByteString -> Pipe Mpi Mpi (HandleMonad h) ()
+setIds h ynr rids = (await >>=) . maybe (return ()) $ \mpi -> do
 	yield mpi
-	if sampleYouNeedResponse mpi
+	if boolXmlNode ynr mpi
 	then when (isGetSet mpi) . lift . liftBase . atomically
 		$ writeTChan rids (fromJust $ getId mpi)
 	else lift $ returnEmpty h "hoge"
 	lift . liftBase . putStrLn $ "\nsetIds: " ++ show (getId mpi)
-	setIds h rids
+	setIds h ynr rids
 
 isGetSet :: Mpi -> Bool
 isGetSet (Iq Tags { tagType = Just "set" } _) = True
@@ -101,9 +103,9 @@ getId (Iq t _) = tagId t
 getId (Message t _) = tagId t
 getId _ = Nothing
 
-sampleYouNeedResponse :: Mpi -> Bool
-sampleYouNeedResponse (Iq _ [XmlNode (_, "no_response") _ _ _]) = False
-sampleYouNeedResponse _ = True
+boolXmlNode :: (XmlNode -> Bool) -> Mpi -> Bool
+boolXmlNode f (Iq _ [n]) = f n
+boolXmlNode _ _ = False
 
 returnEmpty :: (HandleLike h, MonadBase IO (HandleMonad h)) => h -> BS.ByteString -> HandleMonad h ()
 returnEmpty h i = runPipe_ $ yield e =$= output =$= debug =$= toHandleLike h

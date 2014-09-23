@@ -1,6 +1,9 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 import Control.Monad
 import Control.Concurrent
 import System.IO
+import Text.XML.Pipe
 import Network
 
 import Network.XmlPush
@@ -12,5 +15,9 @@ main = do
 	soc <- listenOn $ PortNumber 5222
 	forever $ do
 		(h, _, _) <- accept soc
-		void . forkIO $ testPusher
-			(undefined :: XmppServer Handle) (One h) Null
+		void . forkIO $ testPusher (undefined :: XmppServer Handle) (One h)
+			(XmppServerArgs yNdRspns)
+
+yNdRspns :: XmlNode -> Bool
+yNdRspns (XmlNode (_, "no_response") _ _ _) = False
+yNdRspns _ = True

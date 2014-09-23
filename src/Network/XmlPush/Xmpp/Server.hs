@@ -33,6 +33,7 @@ data XmppServer h = XmppServer
 	(Pipe XmlNode () (HandleMonad h) ())
 
 data XmppServerArgs h = XmppServerArgs {
+	iNeedResponse :: XmlNode -> Bool,
 	youNeedResponse :: XmlNode -> Bool
 	}
 
@@ -48,7 +49,7 @@ makeXmppServer :: (
 	MonadError (HandleMonad h), SaslError (ErrorType (HandleMonad h)),
 	MonadBase IO (HandleMonad h) ) =>
 	One h -> XmppServerArgs h -> HandleMonad h (XmppServer h)
-makeXmppServer (One h) (XmppServerArgs ynr) = do
+makeXmppServer (One h) (XmppServerArgs inr ynr) = do
 	rids <- liftBase $ atomically newTChan
 	(Just ns, _st) <- (`runStateT` initXSt) . runPipe $ do
 		fromHandleLike (THandle h)
@@ -64,23 +65,28 @@ makeXmppServer (One h) (XmppServerArgs ynr) = do
 			=$= convert fromMessage
 			=$= filter isJust
 			=$= convert fromJust
-		w = makeMpi rids
+		w = makeMpi inr rids
 			=$= debug
 			=$= output
 			=$= toHandleLike h
 	return $ XmppServer r w
 
-makeMpi :: MonadBase IO m => TChan BS.ByteString -> Pipe XmlNode Mpi m ()
-makeMpi rids = (await >>=) . maybe (return ()) $ \n -> do
+makeMpi :: MonadBase IO m =>
+	(XmlNode -> Bool) -> TChan BS.ByteString -> Pipe XmlNode Mpi m ()
+makeMpi inr rids = (await >>=) . maybe (return ()) $ \n -> do
 	e <- lift . liftBase . atomically $ isEmptyTChan rids
 	if e
-	then yield $ Message (tagsType "chat") [n]
+	then if inr n
+		then yield $ Iq (tagsType "get") {
+			tagId = Just "012345"
+			} [n]
+		else yield $ Message (tagsType "chat") [n]
 	else do	i <- lift . liftBase .atomically $ readTChan rids
 		lift . liftBase . putStrLn $ "makeMpi: " ++ show i
 		yield $ Iq (tagsType "return") {
 			tagId = Just i
 			} [n]
-	makeMpi rids
+	makeMpi inr rids
 
 setIds :: (HandleLike h, MonadBase IO (HandleMonad h)) => h ->
 	(XmlNode -> Bool) -> TChan BS.ByteString -> Pipe Mpi Mpi (HandleMonad h) ()

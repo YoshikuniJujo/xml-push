@@ -53,13 +53,14 @@ makeXmppServer :: (
 	One h -> XmppServerArgs h -> HandleMonad h (XmppServer h)
 makeXmppServer (One h) (XmppServerArgs inr ynr) = do
 	rids <- liftBase $ atomically newTChan
-	(Just ns, _st) <- (`runStateT` initXSt) . runPipe $ do
+	(Just ns, st) <- (`runStateT` initXSt) . runPipe $ do
 		fromHandleLike (THandle h)
 			=$= sasl "localhost" retrieves
 			=$= toHandleLike (THandle h)
 		fromHandleLike (THandle h)
 			=$= bind "localhost" []
 			=@= toHandleLike (THandle h)
+	liftBase . print $ user st
 	let	r = fromHandleLike h
 			=$= input ns
 			=$= debug
@@ -67,29 +68,35 @@ makeXmppServer (One h) (XmppServerArgs inr ynr) = do
 			=$= convert fromMessage
 			=$= filter isJust
 			=$= convert fromJust
-		w = makeMpi inr rids
+		w = makeMpi (user st) inr rids
 			=$= debug
 			=$= output
 			=$= toHandleLike h
 	return $ XmppServer r w
 
-makeMpi :: MonadBase IO m =>
+makeMpi :: MonadBase IO m => Jid ->
 	(XmlNode -> Bool) -> TChan BS.ByteString -> Pipe XmlNode Mpi m ()
-makeMpi inr rids = (await >>=) . maybe (return ()) $ \n -> do
+makeMpi usr inr rids = (await >>=) . maybe (return ()) $ \n -> do
 	e <- lift . liftBase . atomically $ isEmptyTChan rids
 	if e
 	then if inr n
 		then do	uuid <- lift $ liftBase randomIO
 			yield $ Iq (tagsType "get") {
-				tagId = Just $ toASCIIBytes uuid
+				tagId = Just $ toASCIIBytes uuid,
+				tagTo = Just usr
 				} [n]
-		else yield $ Message (tagsType "chat") [n]
+		else do uuid <- lift $ liftBase randomIO
+			yield $ Message (tagsType "chat") {
+			tagId = Just $ toASCIIBytes uuid,
+			tagTo = Just usr
+			} [n]
 	else do	i <- lift . liftBase .atomically $ readTChan rids
 		lift . liftBase . putStrLn $ "makeMpi: " ++ show i
 		yield $ Iq (tagsType "return") {
-			tagId = Just i
+			tagId = Just i,
+			tagTo = Just usr
 			} [n]
-	makeMpi inr rids
+	makeMpi usr inr rids
 
 setIds :: (HandleLike h, MonadBase IO (HandleMonad h)) => h ->
 	(XmlNode -> Bool) -> TChan BS.ByteString -> Pipe Mpi Mpi (HandleMonad h) ()

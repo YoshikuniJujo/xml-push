@@ -35,6 +35,7 @@ data XmppServer h = XmppServer
 	(Pipe XmlNode () (HandleMonad h) ())
 
 data XmppServerArgs h = XmppServerArgs {
+	domainName :: BS.ByteString,
 	iNeedResponse :: XmlNode -> Bool,
 	youNeedResponse :: XmlNode -> Bool
 	}
@@ -51,14 +52,14 @@ makeXmppServer :: (
 	MonadError (HandleMonad h), SaslError (ErrorType (HandleMonad h)),
 	MonadBase IO (HandleMonad h) ) =>
 	One h -> XmppServerArgs h -> HandleMonad h (XmppServer h)
-makeXmppServer (One h) (XmppServerArgs inr ynr) = do
+makeXmppServer (One h) (XmppServerArgs dn inr ynr) = do
 	rids <- liftBase $ atomically newTChan
-	(Just ns, st) <- (`runStateT` initXSt) . runPipe $ do
+	(Just ns, st) <- (`runStateT` initXSt dn) . runPipe $ do
 		fromHandleLike (THandle h)
-			=$= sasl "localhost" retrieves
+			=$= sasl dn (retrieves dn)
 			=$= toHandleLike (THandle h)
 		fromHandleLike (THandle h)
-			=$= bind "localhost" []
+			=$= bind dn []
 			=@= toHandleLike (THandle h)
 	liftBase . print $ user st
 	let	r = fromHandleLike h
@@ -129,16 +130,19 @@ returnEmpty h i = runPipe_ $ yield e =$= output =$= debug =$= toHandleLike h
 	you = toJid "hoge@hogehost"
 	e = Iq (tagsType "result") { tagId = Just i, tagTo = Just you } []
 
-initXSt :: XSt
-initXSt = XSt {
-	user = Jid "" "localhost" Nothing, rands = repeat "00DEADBEEF00",
-	sSt = [	("realm", "localhost"), ("qop", "auth"), ("charset", "utf-8"),
+initXSt :: BS.ByteString -> XSt
+initXSt dn = XSt {
+	user = Jid "" dn Nothing, rands = repeat "00DEADBEEF00",
+	sSt = [	("realm", dn), ("qop", "auth"), ("charset", "utf-8"),
 		("algorithm", "md5-sess") ] }
 
 retrieves :: (
 	MonadState m, SaslState (StateType m),
-	MonadError m, SaslError (ErrorType m) ) => [Retrieve m]
-retrieves = [RTPlain retrievePln, RTDigestMd5 retrieveDM5, RTScramSha1 retrieveSS1]
+	MonadError m, SaslError (ErrorType m) ) => BS.ByteString -> [Retrieve m]
+retrieves dn = [
+	RTPlain retrievePln,
+	RTDigestMd5 $ retrieveDM5 dn,
+	RTScramSha1 retrieveSS1 ]
 
 retrievePln :: (
 	MonadState m, SaslState (StateType m),
@@ -150,10 +154,11 @@ retrievePln _ _ _ = throwError $ fromSaslError NotAuthorized "auth failure"
 
 retrieveDM5 :: (
 	MonadState m, SaslState (StateType m),
-	MonadError m, SaslError (ErrorType m) ) => BS.ByteString -> m BS.ByteString
-retrieveDM5 "yoshikuni" = return $ DM5.mkStored "yoshikuni" "localhost" "password"
-retrieveDM5 "yoshio" = return $ DM5.mkStored "yoshio" "localhost" "password"
-retrieveDM5 _ = throwError $ fromSaslError NotAuthorized "auth failure"
+	MonadError m, SaslError (ErrorType m) ) =>
+	BS.ByteString -> BS.ByteString -> m BS.ByteString
+retrieveDM5 dn "yoshikuni" = return $ DM5.mkStored "yoshikuni" dn "password"
+retrieveDM5 dn "yoshio" = return $ DM5.mkStored "yoshio" dn "password"
+retrieveDM5 _ _ = throwError $ fromSaslError NotAuthorized "auth failure"
 
 retrieveSS1 :: (
 	MonadState m, SaslState (StateType m),

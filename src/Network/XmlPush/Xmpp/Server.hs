@@ -16,6 +16,8 @@ import Data.HandleLike
 import Data.Pipe
 import Data.Pipe.Flow
 import Data.Pipe.IO
+import Data.UUID
+import System.Random
 import Text.XML.Pipe
 import Network.XMPiPe.Core.C2S.Server
 import Network.XMPiPe.Core.C2S.Client (toJid)
@@ -77,9 +79,10 @@ makeMpi inr rids = (await >>=) . maybe (return ()) $ \n -> do
 	e <- lift . liftBase . atomically $ isEmptyTChan rids
 	if e
 	then if inr n
-		then yield $ Iq (tagsType "get") {
-			tagId = Just "012345"
-			} [n]
+		then do	uuid <- lift $ liftBase randomIO
+			yield $ Iq (tagsType "get") {
+				tagId = Just $ toASCIIBytes uuid
+				} [n]
 		else yield $ Message (tagsType "chat") [n]
 	else do	i <- lift . liftBase .atomically $ readTChan rids
 		lift . liftBase . putStrLn $ "makeMpi: " ++ show i

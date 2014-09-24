@@ -55,7 +55,7 @@ makeXmppServer (One h) (XmppServerArgs dn ps inr ynr) = do
 	let	r = fromHandleLike h
 			=$= input ns
 			=$= debug
-			=$= setIds h ynr rids
+			=$= setIds h ynr (user st) rids
 			=$= convert fromMessage
 			=$= filter isJust
 			=$= convert fromJust

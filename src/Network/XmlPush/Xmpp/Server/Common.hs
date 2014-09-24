@@ -98,15 +98,16 @@ instance SaslState XSt where
 	putSaslState _ _ = error "XSt.getSaslState: null random list"
 
 setIds :: (HandleLike h, MonadBase IO (HandleMonad h)) => h ->
-	(XmlNode -> Bool) -> TChan BS.ByteString -> Pipe Mpi Mpi (HandleMonad h) ()
-setIds h ynr rids = (await >>=) . maybe (return ()) $ \mpi -> do
+	(XmlNode -> Bool) -> Jid -> TChan BS.ByteString ->
+	Pipe Mpi Mpi (HandleMonad h) ()
+setIds h ynr you rids = (await >>=) . maybe (return ()) $ \mpi -> do
 	yield mpi
 	if boolXmlNode ynr mpi
 	then when (isGetSet mpi) . lift . liftBase . atomically
 		$ writeTChan rids (fromJust $ getId mpi)
-	else lift $ returnEmpty h "hoge"
+	else lift $ returnEmpty h (fromJust $ getId mpi) you
 	lift . liftBase . putStrLn $ "\nsetIds: " ++ show (getId mpi)
-	setIds h ynr rids
+	setIds h ynr you rids
 
 isGetSet :: Mpi -> Bool
 isGetSet (Iq Tags { tagType = Just "set" } _) = True
@@ -122,10 +123,10 @@ boolXmlNode :: (XmlNode -> Bool) -> Mpi -> Bool
 boolXmlNode f (Iq _ [n]) = f n
 boolXmlNode _ _ = True
 
-returnEmpty :: (HandleLike h, MonadBase IO (HandleMonad h)) => h -> BS.ByteString -> HandleMonad h ()
-returnEmpty h i = runPipe_ $ yield e =$= output =$= debug =$= toHandleLike h
+returnEmpty :: (HandleLike h, MonadBase IO (HandleMonad h)) => h ->
+	BS.ByteString -> Jid -> HandleMonad h ()
+returnEmpty h i you = runPipe_ $ yield e =$= output =$= debug =$= toHandleLike h
 	where
-	you = toJid "hoge@hogehost"
 	e = Iq (tagsType "result") { tagId = Just i, tagTo = Just you } []
 
 makeMpi :: MonadBase IO m => Jid ->

@@ -6,6 +6,8 @@ import System.IO
 import Text.XML.Pipe
 import Network
 
+import qualified Data.ByteString as BS
+
 import Network.XmlPush
 import Network.XmlPush.Xmpp.Server
 import TestPusher
@@ -16,7 +18,13 @@ main = do
 	forever $ do
 		(h, _, _) <- accept soc
 		void . forkIO $ testPusher (undefined :: XmppServer Handle) (One h)
-			(XmppServerArgs "localhost" iNdRspns yNdRspns)
+			(XmppServerArgs "localhost" pswds iNdRspns yNdRspns)
+
+pswds :: [(BS.ByteString, BS.ByteString)]
+pswds = [
+	("yoshikuni", "password"),
+	("yoshio", "password")
+	]
 
 iNdRspns :: XmlNode -> Bool
 iNdRspns (XmlNode (_, "i_don_t_need_response") _ _ _) = False

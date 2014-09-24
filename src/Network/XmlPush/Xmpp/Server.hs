@@ -38,6 +38,7 @@ data XmppServer h = XmppServer
 
 data XmppServerArgs h = XmppServerArgs {
 	domainName :: BS.ByteString,
+	passwords :: [(BS.ByteString, BS.ByteString)],
 	iNeedResponse :: XmlNode -> Bool,
 	youNeedResponse :: XmlNode -> Bool
 	}
@@ -49,22 +50,16 @@ instance XmlPusher XmppServer where
 	readFrom (XmppServer r _) = r
 	writeTo (XmppServer _ w) = w
 
-samplePasswords :: [(BS.ByteString, BS.ByteString)]
-samplePasswords = [
-	("yoshikuni", "password"),
-	("yoshio", "password")
-	]
-
 makeXmppServer :: (
 	HandleLike h,
 	MonadError (HandleMonad h), SaslError (ErrorType (HandleMonad h)),
 	MonadBase IO (HandleMonad h) ) =>
 	One h -> XmppServerArgs h -> HandleMonad h (XmppServer h)
-makeXmppServer (One h) (XmppServerArgs dn inr ynr) = do
+makeXmppServer (One h) (XmppServerArgs dn ps inr ynr) = do
 	rids <- liftBase $ atomically newTChan
 	(Just ns, st) <- (`runStateT` initXSt dn) . runPipe $ do
 		fromHandleLike (THandle h)
-			=$= sasl dn (retrieves dn samplePasswords)
+			=$= sasl dn (retrieves dn ps)
 			=$= toHandleLike (THandle h)
 		fromHandleLike (THandle h)
 			=$= bind dn []

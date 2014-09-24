@@ -42,7 +42,7 @@ main = do
 		us <- map toASCIIBytes . randoms <$> lift getStdGen
 		_us' <- (`execStateT` us) . runPipe $
 			fromHandle h =$= starttls "localhost" =$= toHandle h
-		(Just cn, (inp, otp)) <- lift $
+		(Just (cn, _), (inp, otp)) <- lift $
 			open h ["TLS_RSA_WITH_AES_128_CBC_SHA"] [(k, c)] (Just ca) g
 		lift . print $ cn "Yoshikuni"
 		lift . print $ cn "Yoshio"

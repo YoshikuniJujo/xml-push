@@ -107,7 +107,7 @@ library
     exposed-modules:
         Network.XmlPush, Network.XmlPush.Simple
         Network.XmlPush.Xmpp, Network.XmlPush.Xmpp.Tls
-        Network.XmlPush.Xmpp.Server,
+        Network.XmlPush.Xmpp.Server, Network.XmlPush.Xmpp.Tls.Server,
         Network.XmlPush.HttpPull.Client, Network.XmlPush.HttpPull.Server
         Network.XmlPush.HttpPull.Tls.Client, Network.XmlPush.HttpPull.Tls.Server
         Network.XmlPush.HttpPush, Network.XmlPush.HttpPush.Tls
@@ -115,6 +115,7 @@ library
         Network.XmlPush.Tls.Client
         Network.XmlPush.Tls.Server
         Network.XmlPush.Xmpp.Common
+        Network.XmlPush.Xmpp.Server.Common
         Network.XmlPush.HttpPull.Client.Common
         Network.XmlPush.HttpPull.Server.Common
         Network.XmlPush.HttpPush.Common

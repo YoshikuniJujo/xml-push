@@ -21,6 +21,7 @@ import Data.Pipe.Flow
 import Data.Pipe.IO
 import Data.Pipe.TChan
 import Data.UUID
+import Data.X509
 import System.Random
 import Text.XML.Pipe
 import Network.XMPiPe.Core.C2S.Server
@@ -62,7 +63,7 @@ makeXmppTlsServer (One h) (XmppTlsServerArgs
 	_ <- (`execStateT` us) . runPipe_ $ fromHandleLike (THandle h)
 		=$= starttls dn
 		=$= toHandleLike (THandle h)
-	(Just (cn, _), (inp, otp)) <- open h cs kcs mca g
+	(Just (cn, c), (inp, otp)) <- open h cs kcs mca g
 	(Just ns, st) <- (`runStateT` initXSt dn) . runPipe $ do
 		fromTChan inp =$= sasl dn (retrieves dn ps) =$= toTChan otp
 		fromTChan inp =$= bind dn [] =@= toTChan otp
@@ -74,8 +75,29 @@ makeXmppTlsServer (One h) (XmppTlsServerArgs
 			=$= convert fromMessage
 			=$= filter isJust
 			=$= convert fromJust
+			=$= checkName cn gn
+			=$= checkCert c cc
 		w = makeMpi (user st) inr rids
 			=$= debug
 			=$= output
 			=$= toTChan otp
 	return $ XmppTlsServer r w
+
+checkName :: Monad m => (String -> Bool) -> (XmlNode -> Maybe String) ->
+	Pipe XmlNode XmlNode m ()
+checkName cn gn = (await >>=) . maybe (return ()) $ \nd -> do
+	case gn nd of
+		Just n -> unless (cn n) $ error "checkName: bad client name"
+		_ -> return ()
+	yield nd
+	checkName cn gn
+
+checkCert :: Monad m =>
+	SignedCertificate -> (XmlNode -> Maybe (SignedCertificate -> Bool)) ->
+	Pipe XmlNode XmlNode m ()
+checkCert c cc = (await >>=) . maybe (return ()) $ \n -> do
+	case cc n of
+		Just ck -> unless (ck c) $ error "checkCert: bad certificate"
+		_ -> return ()
+	yield n
+	checkCert c cc

@@ -120,7 +120,7 @@ getId _ = Nothing
 
 boolXmlNode :: (XmlNode -> Bool) -> Mpi -> Bool
 boolXmlNode f (Iq _ [n]) = f n
-boolXmlNode _ _ = False
+boolXmlNode _ _ = True
 
 returnEmpty :: (HandleLike h, MonadBase IO (HandleMonad h)) => h -> BS.ByteString -> HandleMonad h ()
 returnEmpty h i = runPipe_ $ yield e =$= output =$= debug =$= toHandleLike h

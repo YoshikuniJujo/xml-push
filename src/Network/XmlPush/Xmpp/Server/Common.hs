@@ -25,6 +25,7 @@ import Network.XMPiPe.Core.C2S.Server
 import Network.Sasl
 
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Char8 as BSC
 import qualified Network.Sasl.DigestMd5.Server as DM5
 import qualified Network.Sasl.ScramSha1.Server as SS1
 
@@ -105,7 +106,7 @@ setIds h ynr you rids = (await >>=) . maybe (return ()) $ \mpi -> do
 	then when (isGetSet mpi) . lift . liftBase . atomically
 		$ writeTChan rids (fromJust $ getId mpi)
 	else lift $ returnEmpty h (fromJust $ getId mpi) you
-	lift . liftBase . putStrLn $ "\nsetIds: " ++ show (getId mpi)
+	lift . hlDebug h "medium" . BSC.pack $ "\nsetIds: " ++ show (getId mpi)
 	setIds h ynr you rids
 
 isGetSet :: Mpi -> Bool
@@ -145,7 +146,6 @@ makeMpi usr inr rids = (await >>=) . maybe (return ()) $ \n -> do
 			tagTo = Just usr
 			} [n]
 	else do	i <- lift . liftBase .atomically $ readTChan rids
-		lift . liftBase . putStrLn $ "makeMpi: " ++ show i
 		yield $ Iq (tagsType "return") {
 			tagId = Just i,
 			tagTo = Just usr

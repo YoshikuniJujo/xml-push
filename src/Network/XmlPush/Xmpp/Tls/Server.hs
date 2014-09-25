@@ -71,7 +71,6 @@ makeXmppTlsServer (One h) (XmppTlsServerArgs
 	(Just ns, st) <- (`runStateT` initXSt dn) . runPipe $ do
 		fromTChan inp =$= sasl dn (retrieves dn ps) =$= toTChan otp
 		fromTChan inp =$= bind dn [] =@= toTChan otp
-	liftBase . print $ user st
 	let	r = fromTChan inp
 			=$= input ns
 			=$= debug

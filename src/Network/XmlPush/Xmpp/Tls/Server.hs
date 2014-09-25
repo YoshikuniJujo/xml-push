@@ -19,7 +19,6 @@ import Data.List (intercalate)
 import Data.HandleLike
 import Data.Pipe
 import Data.Pipe.Flow
-import Data.Pipe.IO
 import Data.Pipe.TChan
 import Data.UUID
 import Data.X509
@@ -73,7 +72,6 @@ makeXmppTlsServer (One h) (XmppTlsServerArgs
 		fromTChan inp =$= bind dn [] =@= toTChan otp
 	let	r = fromTChan inp
 			=$= input ns
-			=$= debug
 			=$= setIds h ynr (user st) rids
 			=$= convert fromMessage
 			=$= filter isJust
@@ -81,7 +79,6 @@ makeXmppTlsServer (One h) (XmppTlsServerArgs
 			=$= checkName cn gn
 			=$= checkCert c cc
 		w = makeMpi (user st) inr rids
-			=$= debug
 			=$= output
 			=$= toTChan otp
 	return $ XmppTlsServer r w

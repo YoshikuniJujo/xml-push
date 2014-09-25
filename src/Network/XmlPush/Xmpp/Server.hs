@@ -17,7 +17,6 @@ import Data.Maybe
 import Data.HandleLike
 import Data.Pipe
 import Data.Pipe.Flow
-import Data.Pipe.IO
 import Text.XML.Pipe
 import Network.XMPiPe.Core.C2S.Server
 import Network.Sasl
@@ -51,16 +50,13 @@ makeXmppServer (One h) (XmppServerArgs dn ps inr ynr) = do
 		fromHandleLike (THandle h)
 			=$= bind dn []
 			=@= toHandleLike (THandle h)
-	liftBase . print $ user st
 	let	r = fromHandleLike h
 			=$= input ns
-			=$= debug
 			=$= setIds h ynr (user st) rids
 			=$= convert fromMessage
 			=$= filter isJust
 			=$= convert fromJust
 		w = makeMpi (user st) inr rids
-			=$= debug
 			=$= output
 			=$= toHandleLike h
 	return $ XmppServer r w

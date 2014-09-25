@@ -22,7 +22,6 @@ import Data.UUID
 import System.Random
 import Text.XML.Pipe
 import Network.XMPiPe.Core.C2S.Server
-import Network.XMPiPe.Core.C2S.Client (toJid)
 import Network.Sasl
 
 import qualified Data.ByteString as BS

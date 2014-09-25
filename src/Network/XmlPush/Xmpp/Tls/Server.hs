@@ -15,6 +15,7 @@ import Control.Monad.Base
 import Control.Monad.Trans.Control
 import Control.Concurrent.STM
 import Data.Maybe
+import Data.List (intercalate)
 import Data.HandleLike
 import Data.Pipe
 import Data.Pipe.Flow
@@ -22,15 +23,18 @@ import Data.Pipe.IO
 import Data.Pipe.TChan
 import Data.UUID
 import Data.X509
+import Data.X509.Validation
 import System.Random
 import Text.XML.Pipe
 import Network.XMPiPe.Core.C2S.Server
 import Network.XmlPush
 import Network.Sasl
 import Network.PeyoTLS.TChan.Server
+import Numeric
 import "crypto-random" Crypto.Random
 
 -- import qualified Data.ByteString.Char8 as BSC
+import qualified Data.ByteString as BS
 
 import Network.XmlPush.Xmpp.Common
 import Network.XmlPush.Xmpp.Server.Common
@@ -97,7 +101,10 @@ checkCert :: Monad m =>
 	Pipe XmlNode XmlNode m ()
 checkCert c cc = (await >>=) . maybe (return ()) $ \n -> do
 	case cc n of
-		Just ck -> unless (ck c) $ error "checkCert: bad certificate"
+		Just ck -> unless (ck c) . error $ "checkCert: bad certificate "
+			++ intercalate ":" (map (flip showHex "")
+				(BS.unpack . (\(Fingerprint bs) -> bs) $
+					getFingerprint c HashSHA256))
 		_ -> return ()
 	yield n
 	checkCert c cc

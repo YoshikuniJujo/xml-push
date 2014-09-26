@@ -25,14 +25,20 @@ data HttpPullSvArgs h = HttpPullSvArgs {
 	}
 
 runXml :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
+	[XmlNode] ->
 	h -> (XmlNode -> Bool) -> XmlNode -> (XmlNode -> Bool) ->
 	Pipe XmlNode XmlNode (HandleMonad h) () ->
 	HandleMonad h (TChan XmlNode, TChan XmlNode)
-runXml h ip ep ynr cn = do
+runXml pre h ip ep ynr cn = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
+	runPipe_ $ writeToChan inc pre cn
 	_ <- liftBaseDiscard forkIO . runPipe_ $ talk h ip ep ynr inc otc cn
 	return (inc, otc)
+
+writeToChan :: MonadBase IO m =>
+	TChan XmlNode -> [XmlNode] -> Pipe XmlNode XmlNode m () -> Pipe () () m ()
+writeToChan inc pre cn = mapM yield pre =$= cn =$= toTChan inc
 
 talk :: (HandleLike h, MonadBase IO (HandleMonad h)) =>
 	h -> (XmlNode -> Bool) -> XmlNode -> (XmlNode -> Bool) ->
@@ -58,15 +64,6 @@ talk h ip ep ynr inc otc cn = do
 			(fromTChan otc =$=) . (await >>=) . maybe (return ()) $
 				\n -> lift . putResponse h . responseP
 					$ LBS.fromChunks [xmlString [n]]
-		{-
-	if case rns of [n] -> ip n; _ -> False
-	then (flushOr otc ep =$=) . (await >>=) . maybe (return ()) $ \n ->
-		lift . putResponse h . responseP $ LBS.fromChunks [xmlString [n]]
-	else do	mapM_ yield rns =$= toTChan inc
-		(fromTChan otc =$=) . (await >>=) . maybe (return ()) $ \n ->
-			lift . putResponse h . responseP
-				$ LBS.fromChunks [xmlString [n]]
-				-}
 	talk h ip ep ynr inc otc cn
 
 responseP :: (HandleLike h, MonadBase IO (HandleMonad h)) =>

@@ -56,7 +56,7 @@ makeHttpPull (One h) (HttpPullTlsSvArgs
 			. toHexStr
 			. flip getFingerprint HashSHA256
 			-}
-		runXml t ip ep ynr $ checkNameP t gn cc
+		runXml [] t ip ep ynr $ checkNameP t gn cc
 	return $ HttpPullTlsSv (fromTChan inc) (toTChan otc)
 
 {-

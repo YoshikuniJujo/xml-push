@@ -118,6 +118,7 @@ library
         Network.XmlPush.Xmpp.Server.Common
         Network.XmlPush.HttpPull.Client.Common
         Network.XmlPush.HttpPull.Server.Common
+        Network.XmlPush.HttpPull.Server.Body
         Network.XmlPush.HttpPush.Common
     build-depends:
         base == 4.*, peyotls == 0.1.*, simple-pipe == 0.0.*, xml-pipe == 0.0.*,

@@ -6,6 +6,7 @@ module Network.XmlPush.HttpPush.Tls.Body (
 	HttpPushTls, HttpPushTlsArgs(..), HttpPushArgs(..),
 	TlsArgsCl, tlsArgsCl, TlsArgsSv, tlsArgsSv,
 	makeHttpPushTls,
+	HttpPushTlsTest(..), HttpPushTlsTestArgs(..),
 	) where
 
 import Prelude hiding (filter)
@@ -76,6 +77,17 @@ instance XmlPusher HttpPushTls where
 		return [
 			(const nr, serverWriteChan hp),
 			(const True, clientWriteChan hp) ]
+
+data HttpPushTlsTest h = HttpPushTlsTest (HttpPushTls h)
+data HttpPushTlsTestArgs h = HttpPushTlsTestArgs (HttpPushTlsArgs h) [XmlNode]
+
+instance XmlPusher HttpPushTlsTest where
+	type NumOfHandle HttpPushTlsTest = Two
+	type PusherArgs HttpPushTlsTest = HttpPushTlsTestArgs
+	generate (Two ch sh) (HttpPushTlsTestArgs a p) =
+		HttpPushTlsTest <$> makeHttpPushTls p ch sh a
+	readFrom (HttpPushTlsTest hp) = readFrom hp
+	writeTo (HttpPushTlsTest hp) = writeTo hp
 
 makeHttpPushTls :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	[XmlNode] ->

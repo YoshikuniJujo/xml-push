@@ -67,7 +67,7 @@ data HttpPushTlsArgs h = HttpPushTlsArgs (HttpPushArgs h) TC.TlsArgs TS.TlsArgs
 instance XmlPusher HttpPushTls where
 	type NumOfHandle HttpPushTls = Two
 	type PusherArgs HttpPushTls = HttpPushTlsArgs
-	generate (Two ch sh) = makeHttpPushTls ch sh
+	generate (Two ch sh) = makeHttpPushTls [] ch sh
 	readFrom hp = fromTChans [clientReadChan hp, serverReadChan hp] =$=
 		setNeedReply (needReply hp)
 	writeTo hp = (convert (((), ) . Just) =$=) . toTChansM $ do
@@ -78,9 +78,10 @@ instance XmlPusher HttpPushTls where
 			(const True, clientWriteChan hp) ]
 
 makeHttpPushTls :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
+	[XmlNode] ->
 	Maybe h -> Maybe h ->
 	HttpPushTlsArgs h -> HandleMonad h (HttpPushTls h)
-makeHttpPushTls mch msh (HttpPushTlsArgs (HttpPushArgs gc gs hi gp wr)
+makeHttpPushTls pre mch msh (HttpPushTlsArgs (HttpPushArgs gc gs hi gp wr)
 	(TC.TlsArgs dn cdn cc' cs ca kcs) (TS.TlsArgs gn cc cs' mca' kcs')) = do
 	vch <- liftBase . atomically $ newTVar mch
 	vsh <- liftBase . atomically $ newTVar msh
@@ -91,7 +92,7 @@ makeHttpPushTls mch msh (HttpPushTlsArgs (HttpPushArgs gc gs hi gp wr)
 	v <- liftBase . atomically $ newTVar False
 	vhi <- liftBase . atomically $ newTVar hi
 	(ci, co) <- clientC vch vhi cdn cc' gp cs ca kcs
-	(si, so) <- talk wr vsh gn cc cs' mca' kcs' vch vhi gc gs
+	(si, so) <- talk pre wr vsh gn cc cs' mca' kcs' vch vhi gc gs
 	return $ HttpPushTls v ci co si so
 
 clientC :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
@@ -127,6 +128,7 @@ clientC vh vhi cdn cc gp cs ca kcs = do
 	return (inc, otc)
 
 talk :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
+	[XmlNode] ->
 	(XmlNode -> Bool) -> (TVar (Maybe h)) -> (XmlNode -> Maybe String) ->
 	(XmlNode -> Maybe (SignedCertificate -> Bool)) -> [Sv.CipherSuite] ->
 	Maybe CertificateStore -> [(CertSecretKey, CertificateChain)] ->
@@ -134,7 +136,7 @@ talk :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	(XmlNode -> Maybe (HandleMonad h h, String, Int, FilePath)) ->
 	Maybe (HandleMonad h h) ->
 	HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
-talk wr vh gn cc cs mca kcs vch vhi gc mgs = do
+talk pre wr vh gn cc cs mca kcs vch vhi gc mgs = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
 	g <- liftBase (cprgCreate <$> createEntropyPool :: IO SystemRNG)
@@ -149,6 +151,8 @@ talk wr vh gn cc cs mca kcs vch vhi gc mgs = do
 				_ -> retry
 		(`Sv.run` g) $ do
 			t <- Sv.open h cs kcs mca
+			runPipe_ . writeToChan t inc otc pre $
+				setClient vch vhi gc =$= checkReply wr otc
 			runPipe_ . forever $ do
 				req <- lift $ getRequest t
 				requestBody req
@@ -165,6 +169,18 @@ talk wr vh gn cc cs mca kcs vch vhi gc mgs = do
 						Just n -> LBS.fromChunks [xmlString [n]]
 						_ -> "")
 	return (inc, otc)
+
+writeToChan :: (HandleLike h, MonadBase IO (HandleMonad h)) =>
+	h -> TChan a -> TChan (Maybe XmlNode) -> [XmlNode] ->
+	Pipe XmlNode a (HandleMonad h) () ->
+	Pipe () () (HandleMonad h) ()
+writeToChan _ _ _ [] _ = return ()
+writeToChan h inc otc pre pp = do
+	mapM yield pre =$= pp =$= toTChan inc
+	fromTChan otc =$= await >>= maybe (return ()) (\mn ->
+		lift . putResponse h . responseP $ case mn of
+			Just n -> LBS.fromChunks [xmlString [n]]
+			_ -> "")
 
 checkCert :: HandleLike h => Sv.TlsHandle h g ->
 	(XmlNode -> Maybe (SignedCertificate -> Bool)) ->

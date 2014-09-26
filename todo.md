@@ -13,10 +13,12 @@ Unify HTTP PULL/PUSH server
 * HTTP PULL server
 	+ [x] move code to Body.hs
 	+ [ ] add (pre :: [XmlNode]) argument to makeHttpPull
+	+ [ ] process pre argument (push to TChan)
 	+ [ ] make response to pre
 * HTTP PUSH server
 	+ [ ] move code to Body.hs
 	+ [ ] add (pre :: [XmlNode]) argument to makeHttpPull
+	+ [ ] process pre argument (push to TChan)
 	+ [ ] make response to pre
 * PULL/PUSH server
 	+ [ ] make module Network.XmlPush.Tls.Server

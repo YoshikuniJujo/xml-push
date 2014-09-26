@@ -3,6 +3,7 @@
 
 module Network.XmlPush.HttpPull.Tls.Server.Body (
 	HttpPullTlsSv, HttpPullTlsSvArgs(..), HttpPullSvArgs(..), TlsArgs(..),
+	HttpPullTlsSvTest, HttpPullTlsSvTestArgs(..),
 	makeHttpPull,
 	) where
 
@@ -37,6 +38,21 @@ instance XmlPusher HttpPullTlsSv where
 	generate = makeHttpPull []
 	readFrom (HttpPullTlsSv r _) = r
 	writeTo (HttpPullTlsSv _ w) = w
+
+data HttpPullTlsSvTest h = HttpPullTlsSvTest
+	(Pipe () XmlNode (HandleMonad h) ())
+	(Pipe XmlNode () (HandleMonad h) ())
+
+data HttpPullTlsSvTestArgs h = HttpPullTlsSvTestArgs (HttpPullTlsSvArgs h) [XmlNode]
+
+instance XmlPusher HttpPullTlsSvTest where
+	type NumOfHandle HttpPullTlsSvTest = One
+	type PusherArgs HttpPullTlsSvTest = HttpPullTlsSvTestArgs
+	generate h (HttpPullTlsSvTestArgs a pre) = do
+		HttpPullTlsSv r w <- makeHttpPull pre h a
+		return $ HttpPullTlsSvTest r w
+	readFrom (HttpPullTlsSvTest r _) = r
+	writeTo (HttpPullTlsSvTest _ w) = w
 
 makeHttpPull :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	[XmlNode] ->

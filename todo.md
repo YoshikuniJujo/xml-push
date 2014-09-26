@@ -15,7 +15,7 @@ Unify HTTP PULL/PUSH server
 	+ [x] add (pre :: [XmlNode]) argument to makeHttpPull
 	+ [x] process pre argument (push to TChan)
 	+ [x] make response to pre
-	+ [ ] make data type for test
+	+ [x] make data type for test
 	+ [ ] make example as test code
 * HTTP PUSH server
 	+ [ ] move code to Body.hs

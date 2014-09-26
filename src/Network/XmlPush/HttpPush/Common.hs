@@ -16,7 +16,6 @@ import Control.Concurrent.STM
 import Data.Maybe
 import Data.HandleLike
 import Data.Pipe
-import Data.Pipe.IO
 import Text.XML.Pipe
 import Network.TigHTTP.Client
 import Network.TigHTTP.Server
@@ -42,10 +41,8 @@ clientLoop :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	Pipe XmlNode XmlNode (HandleMonad h) () ->
 	Pipe XmlNode XmlNode (HandleMonad h) ()
 clientLoop h hn pn pt gp p = (await >>=) . maybe (return ()) $ \n -> do
-	lift . liftBase . putStrLn $ "before request" ++ show n
 	r <- lift . request h $ post hn pn (pt ++ "/" ++ gp n)
 		(Nothing, LBS.fromChunks [xmlString [n]])
-	lift . liftBase . putStrLn $ "after request" ++ show n
 	return ()
 		=$= responseBody r
 		=$= xmlEvent

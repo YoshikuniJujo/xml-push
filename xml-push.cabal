@@ -120,6 +120,7 @@ library
         Network.XmlPush.HttpPull.Client.Common
         Network.XmlPush.HttpPull.Server.Common
         Network.XmlPush.HttpPull.Server.Body
+        Network.XmlPush.HttpPull.Tls.Server.Body
         Network.XmlPush.HttpPush.Common
         Network.XmlPush.HttpPush.Body
     build-depends:

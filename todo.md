@@ -26,7 +26,8 @@ Unify HTTP PULL/PUSH server
 	+ [x] make data type for test
 	+ [x] make example as test code
 * PULL/PUSH server
-	+ [ ] make module Network.XmlPush.Tls.Server
-	+ [ ] make data type
-	+ [ ] make it instance of XmlPush
+	+ [x] make module Network.XmlPush.Tls.Server
+	+ [x] make data type
+	+ [x] make it instance of XmlPush
+	+ [ ] make example code
 * process TLS original problems

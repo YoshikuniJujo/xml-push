@@ -2,8 +2,8 @@
 	PackageImports #-}
 
 module Network.XmlPush.HttpPull.Tls.Server.Body (
-	HttpPullTlsSv, HttpPullTlsSvArgs(..), HttpPullSvArgs(..), TlsArgs(..),
-	HttpPullTlsSvTest, HttpPullTlsSvTestArgs(..),
+	HttpPullTlsSv(..), HttpPullTlsSvArgs(..), HttpPullSvArgs(..), TlsArgs(..),
+	HttpPullTlsSvTest(..), HttpPullTlsSvTestArgs(..),
 	makeHttpPull,
 	) where
 

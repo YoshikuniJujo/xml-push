@@ -120,6 +120,7 @@ library
         Network.XmlPush.HttpPull.Server.Common
         Network.XmlPush.HttpPull.Server.Body
         Network.XmlPush.HttpPush.Common
+        Network.XmlPush.HttpPush.Body
     build-depends:
         base == 4.*, peyotls == 0.1.*, simple-pipe == 0.0.*, xml-pipe == 0.0.*,
         handle-like == 0.1.*, monad-control == 0.3.*, transformers-base == 0.4.*,

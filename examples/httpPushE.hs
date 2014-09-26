@@ -16,8 +16,10 @@ main = do
 
 getServerHandle :: Maybe (IO Handle)
 getServerHandle = Just $ do
+	putStrLn "getServerHandle begin"
 	soc <- listenOn $ PortNumber 8080
 	(h, _, _) <- accept soc
+	putStrLn "getServerHandle: accepted"
 	return h
 
 wntRspns :: XmlNode -> Bool

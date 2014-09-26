@@ -32,21 +32,29 @@ runXml :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 runXml pre h ip ep ynr cn = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
-	runPipe_ $ writeToChan inc pre cn
-	_ <- liftBaseDiscard forkIO . runPipe_ $ talk h ip ep ynr inc otc cn
+	_ <- liftBaseDiscard forkIO . runPipe_ $ do
+		writeToChan h inc otc pre cn
+		talk h ip ep ynr inc otc cn
 	return (inc, otc)
 
-writeToChan :: MonadBase IO m =>
-	TChan XmlNode -> [XmlNode] -> Pipe XmlNode XmlNode m () -> Pipe () () m ()
-writeToChan inc pre cn = mapM yield pre =$= cn =$= toTChan inc
+writeToChan :: (HandleLike h, MonadBase IO (HandleMonad h)) => h ->
+	TChan XmlNode -> TChan XmlNode ->
+	[XmlNode] -> Pipe XmlNode XmlNode (HandleMonad h) () ->
+	Pipe () () (HandleMonad h) ()
+writeToChan h inc otc pre cn = do
+	mapM yield pre =$= cn =$= toTChan inc
+	(fromTChan otc =$=) . (await >>=) . maybe (return ()) $ \n ->
+		lift . putResponse h . responseP $ LBS.fromChunks [xmlString [n]]
 
 talk :: (HandleLike h, MonadBase IO (HandleMonad h)) =>
 	h -> (XmlNode -> Bool) -> XmlNode -> (XmlNode -> Bool) ->
 	TChan XmlNode -> TChan XmlNode -> Pipe XmlNode XmlNode (HandleMonad h) () ->
 	Pipe () () (HandleMonad h) ()
 talk h ip ep ynr inc otc cn = do
+--	lift . liftBase $ putStrLn "talk begin"
 	r <- lift $ getRequest h
-	lift . liftBase . print $ requestPath r
+--	lift . liftBase $ putStrLn "getRequest done"
+--	lift . liftBase . print $ requestPath r
 	rns <- requestBody r
 		=$= xmlEvent
 		=$= convert fromJust

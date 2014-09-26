@@ -14,6 +14,7 @@ import Control.Concurrent.STM
 import Data.Maybe
 import Data.HandleLike
 import Data.Pipe
+-- import Data.Pipe.IO
 import Data.Pipe.TChan
 import System.IO
 import Text.XML.Pipe
@@ -39,6 +40,7 @@ talkC :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	TVar (Maybe Int) -> (XmlNode -> Maybe Int) ->
 	HandleMonad h (TChan XmlNode, TChan XmlNode)
 talkC h addr pn pth gp pl ip dr gdr = do
+--	liftBase $ putStrLn "talkC begin"
 	lock <- liftBase $ atomically newTChan
 	liftBase . atomically $ writeTChan lock ()
 	inc <- liftBase $ atomically newTChan
@@ -46,7 +48,9 @@ talkC h addr pn pth gp pl ip dr gdr = do
 	otc <- liftBase $ atomically newTChan
 	otc' <- liftBase $ atomically newTChan
 	void . liftBaseDiscard forkIO . runPipe_ $ fromTChan otc
+--		=$= debug
 		=$= conversation lock h addr pn pth gp dr gdr
+--		=$= debug
 		=$= toTChan inc
 	void . liftBaseDiscard forkIO . runPipe_ $ fromTChan otc'
 		=$= conversation lock h addr pn pth gp dr gdr
@@ -60,6 +64,7 @@ talkC h addr pn pth gp pl ip dr gdr = do
 		liftBase $ threadDelay d
 		p <- pl
 		liftBase $ polling p ip inc' inc otc'
+--	liftBase $ putStrLn "talkC end"
 	return (inc, otc)
 
 conversation :: (HandleLike h, MonadBase IO (HandleMonad h)) =>
@@ -91,12 +96,16 @@ talk :: (MonadBase IO (HandleMonad h), HandleLike h) =>
 	Pipe XmlNode XmlNode (HandleMonad h) ()
 talk lock h addr pn pth gp = (await >>=) . maybe (return ()) $ \n -> do
 	let m = LBS.fromChunks [xmlString [n]]
+--	lift . liftBase $ putStrLn "before lock"
 	lift . liftBase . atomically $ readTChan lock
+--	lift . liftBase $ putStrLn "locking"
 	r <- lift . request h $ post addr pn (pth ++ "/" ++ gp n) (Nothing, m)
+--	lift . liftBase $ putStrLn "request done"
 	void $ return ()
 		=$= responseBody r
 		=$= xmlEvent
 		=$= convert fromJust
 		=$= xmlNode []
 	lift . liftBase . atomically $ writeTChan lock ()
+--	lift . liftBase $ putStrLn "after lock"
 	talk lock h addr pn pth gp

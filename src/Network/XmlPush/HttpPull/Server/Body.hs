@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies, FlexibleContexts #-}
+{-# LANGUAGE OverloadedStrings, TypeFamilies, FlexibleContexts #-}
 
 module Network.XmlPush.HttpPull.Server.Body (
 	HttpPullSv(..), HttpPullSvArgs(..), makeHttpPull,
@@ -30,7 +30,9 @@ instance XmlPusher HttpPullSv where
 makeHttpPull :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	[XmlNode] -> One h -> HttpPullSvArgs h -> HandleMonad h (HttpPullSv h)
 makeHttpPull pre (One h) (HttpPullSvArgs ip ep ynr) = do
+--	hlDebug h "critical" "begin makeHttpPull\n"
 	(inc, otc) <- runXml pre h ip ep ynr (convert id)
+--	hlDebug h "critical" "runXml done\n"
 	return $ HttpPullSv (fromTChan inc) (toTChan otc)
 
 data HttpPullSvTest h = HttpPullSvTest

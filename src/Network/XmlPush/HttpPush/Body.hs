@@ -3,7 +3,7 @@
 
 module Network.XmlPush.HttpPush.Body (
 	HttpPush, HttpPushArgs(..), makeHttpPush,
-	HttpPushTest, HttpPushTestArgs(..),
+	HttpPushTest(..), HttpPushTestArgs(..),
 	) where
 
 import Prelude hiding (filter)
@@ -19,6 +19,7 @@ import Data.Maybe
 import Data.HandleLike
 import Data.Pipe
 import Data.Pipe.Flow
+import Data.Pipe.IO
 import Data.Pipe.TChan
 import Text.XML.Pipe
 import Network.TigHTTP.Server
@@ -77,6 +78,7 @@ makeHttpPush pre mch msh (HttpPushArgs gc gs hi gp wr) = do
 	v <- liftBase . atomically $ newTVar False
 	vhi <- liftBase . atomically $ newTVar hi
 	(ci, co) <- clientC vch vhi gp
+	liftBase $ putStrLn "after clientC"
 	(si, so) <- talk pre wr vsh vch vhi gc gs
 	return $ HttpPush v ci co si so
 
@@ -88,16 +90,19 @@ clientC vh vhi gp = do
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
 	void . liftBaseDiscard forkIO $ do
+		liftBase $ putStrLn "clientC: forked"
 		h <- liftBase . atomically $ do
 			mh <- readTVar vh
 			case mh of
 				Just h -> return h
 				_ -> retry
+		liftBase $ putStrLn "clientC: got client handle"
 		(hn, pn, pt) <- liftBase . atomically $ do
 			mhi <- readTVar vhi
 			case mhi of
 				Just hi -> return hi
 				_ -> retry
+		liftBase $ putStrLn "clientC: got client params"
 		runPipe_ $ fromTChan otc
 			=$= filter isJust
 			=$= convert fromJust
@@ -114,27 +119,34 @@ talk :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	Maybe (HandleMonad h h) ->
 	HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
 talk pre wr vh vch vhi gc mgs = do
+	liftBase . putStrLn $ "talk begin"
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
 	void . liftBaseDiscard forkIO $ do
 		flip (maybe (return ())) mgs $ \gs -> do
 			h <- gs
 			liftBase . atomically $ writeTVar vh (Just h)
+		liftBase . putStrLn $ "talk: before get handle"
 		h <- liftBase . atomically $ do
 			mh <- readTVar vh
 			case mh of
 				Just h -> return h
 				_ -> retry
-		runPipe_ . writeToChan inc pre $
+		liftBase . putStrLn $ "talk: after get handle"
+		runPipe_ . writeToChan h inc otc pre $
 			setClient vch vhi gc =$= checkReply wr otc
+		liftBase . putStrLn $ "talk: before runPipe_"
 		runPipe_ . forever $ do
+			lift . liftBase . putStrLn $ "before getRequest"
 			req <- lift $ getRequest h
+			lift . liftBase . putStrLn $ "getRequest done"
 			requestBody req
 				=$= xmlEvent
 				=$= convert fromJust
 				=$= xmlNode []
 				=$= setClient vch vhi gc
 				=$= checkReply wr otc
+				=$= debug
 				=$= toTChan inc
 			fromTChan otc =$= await >>= maybe (return ()) (\mn ->
 				lift . putResponse h . responseP $ case mn of
@@ -142,9 +154,17 @@ talk pre wr vh vch vhi gc mgs = do
 					_ -> "")
 	return (inc, otc)
 
-writeToChan :: MonadBase IO m => TChan a -> [XmlNode] ->
-	Pipe XmlNode a m () -> Pipe () () m ()
-writeToChan inc pre pp = mapM yield pre =$= pp =$= toTChan inc
+writeToChan :: (HandleLike h, MonadBase IO (HandleMonad h)) =>
+	h -> TChan a -> TChan (Maybe XmlNode) -> [XmlNode] ->
+	Pipe XmlNode a (HandleMonad h) () ->
+	Pipe () () (HandleMonad h) ()
+writeToChan _ _ _ [] _ = return ()
+writeToChan h inc otc pre pp = do
+	mapM yield pre =$= pp =$= toTChan inc
+	fromTChan otc =$= await >>= maybe (return ()) (\mn ->
+		lift . putResponse h . responseP $ case mn of
+			Just n -> LBS.fromChunks [xmlString [n]]
+			_ -> "")
 
 setClient :: (MonadBase IO (HandleMonad h)) =>
 	TVar (Maybe h) -> TVar (Maybe (String, Int, FilePath)) ->
@@ -154,6 +174,7 @@ setClient vch vhi gc = (await >>=) . maybe (return ()) $ \n -> do
 	yield n
 	case gc n of
 		Just (gh, hn, pn, pt) -> do
+			lift . liftBase $ putStrLn "setClient"
 			h <- lift gh
 			lift . liftBase . atomically . writeTVar vch $ Just h
 			lift . liftBase . atomically . writeTVar vhi

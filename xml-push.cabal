@@ -111,6 +111,7 @@ library
         Network.XmlPush.HttpPull.Client, Network.XmlPush.HttpPull.Server
         Network.XmlPush.HttpPull.Tls.Client, Network.XmlPush.HttpPull.Tls.Server
         Network.XmlPush.HttpPush, Network.XmlPush.HttpPush.Tls
+        Network.XmlPush.Http.Server
     other-modules:
         Network.XmlPush.Tls.Client
         Network.XmlPush.Tls.Server

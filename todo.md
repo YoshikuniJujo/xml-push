@@ -19,7 +19,7 @@ Unify HTTP PULL/PUSH server
 #### todo
 
 * HTTP PUSH server
-	+ [ ] move code to Body.hs
+	+ [x] move code to Body.hs
 	+ [ ] add (pre :: [XmlNode]) argument to makeHttpPull
 	+ [ ] process pre argument (push to TChan)
 	+ [ ] make response to pre

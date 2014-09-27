@@ -5,6 +5,7 @@ module Network.XmlPush.HttpPull.Tls.Server.Body (
 	HttpPullTlsSv(..), HttpPullTlsSvArgs(..), HttpPullSvArgs(..), TlsArgs(..),
 	HttpPullTlsSvTest(..), HttpPullTlsSvTestArgs(..),
 	makeHttpPull,
+	makeHttpPullTls,
 	) where
 
 import Prelude hiding (filter)
@@ -35,7 +36,7 @@ data HttpPullTlsSvArgs h = HttpPullTlsSvArgs (HttpPullSvArgs h) TlsArgs
 instance XmlPusher HttpPullTlsSv where
 	type NumOfHandle HttpPullTlsSv = One
 	type PusherArgs HttpPullTlsSv = HttpPullTlsSvArgs
-	generate = makeHttpPull []
+	generate = makeHttpPullTls []
 	readFrom (HttpPullTlsSv r _) = r
 	writeTo (HttpPullTlsSv _ w) = w
 
@@ -49,21 +50,29 @@ instance XmlPusher HttpPullTlsSvTest where
 	type NumOfHandle HttpPullTlsSvTest = One
 	type PusherArgs HttpPullTlsSvTest = HttpPullTlsSvTestArgs
 	generate h (HttpPullTlsSvTestArgs a pre) = do
-		HttpPullTlsSv r w <- makeHttpPull pre h a
+		HttpPullTlsSv r w <- makeHttpPullTls pre h a
 		return $ HttpPullTlsSvTest r w
 	readFrom (HttpPullTlsSvTest r _) = r
 	writeTo (HttpPullTlsSvTest _ w) = w
 
-makeHttpPull :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
+makeHttpPullTls :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	[XmlNode] ->
 	One h -> HttpPullTlsSvArgs h -> HandleMonad h (HttpPullTlsSv h)
-makeHttpPull pre (One h) (HttpPullTlsSvArgs
+makeHttpPullTls pre (One h) (HttpPullTlsSvArgs
 	(HttpPullSvArgs ip ep ynr) (TlsArgs gn cc cs mca kcs)) = do
 	g <- liftBase (cprgCreate <$> createEntropyPool :: IO SystemRNG)
-	(inc, otc) <- (`run` g) $ do
+	(`run` g) $ do
 		t <- open h cs kcs mca
-		runXml pre t ip ep ynr $ checkNameP t gn cc
-	return $ HttpPullTlsSv (fromTChan inc) (toTChan otc)
+		makeHttpPull pre t (HttpPullSvArgs ip ep ynr) gn cc
+
+makeHttpPull :: (ValidateHandle h, CPRG g, MonadBaseControl IO (HandleMonad h)) =>
+	[XmlNode] -> TlsHandle h g -> HttpPullSvArgs h ->
+	(XmlNode -> Maybe String) ->
+	(XmlNode -> Maybe (SignedCertificate -> Bool)) ->
+	TlsM h g (HttpPullTlsSv h)
+makeHttpPull pre t (HttpPullSvArgs ip ep ynr) gn cc = do
+		(inc, otc) <- runXml pre t ip ep ynr $ checkNameP t gn cc
+		return $ HttpPullTlsSv (fromTChan inc) (toTChan otc)
 
 checkNameP :: HandleLike h => TlsHandle h g -> (XmlNode -> Maybe String) ->
 	(XmlNode -> Maybe (SignedCertificate -> Bool)) ->

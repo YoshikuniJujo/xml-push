@@ -5,7 +5,7 @@
 module Network.XmlPush.HttpPush.Tls.Body (
 	HttpPushTls, HttpPushTlsArgs(..), HttpPushArgs(..),
 	TlsArgsCl, tlsArgsCl, TlsArgsSv, tlsArgsSv,
-	makeHttpPushTls,
+	makeHttpPush, makeHttpPushTls,
 	HttpPushTlsTest(..), HttpPushTlsTestArgs(..),
 	) where
 
@@ -107,6 +107,31 @@ makeHttpPushTls pre mch msh (HttpPushTlsArgs (HttpPushArgs gc gs hi gp wr)
 	(si, so) <- talk pre wr vsh gn cc cs' mca' kcs' vch vhi gc gs
 	return $ HttpPushTls v ci co si so
 
+makeHttpPush :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h), CPRG g) =>
+	[XmlNode] -> Maybe h -> Sv.TlsHandle h g ->
+	HttpPushTlsArgs h -> Sv.TlsM h g (HttpPushTls h)
+makeHttpPush pre mch t (HttpPushTlsArgs (HttpPushArgs gc gs hi gp wr)
+	(TC.TlsArgs dn cdn cc' cs ca kcs) (TS.TlsArgs gn cc cs' mca' kcs')) = do
+	vch <- lift . lift . liftBase . atomically $ newTVar mch
+	vsh <- lift . lift . liftBase . atomically $ newTVar undefined
+	hlDebug t "critical" "in makeHttpPush\n"
+	case hi of
+		Just (hn, _, _) -> when (dn /= hn) $
+			error "makeHttpPushTls: conflicted domain name"
+		_ -> return ()
+	v <- lift . lift . liftBase . atomically $ newTVar False
+	vhi <- lift . lift . liftBase . atomically $ newTVar hi
+	(ci, co) <- lift . lift $ clientC vch vhi cdn cc' gp cs ca kcs
+	(si, so) <- do
+		inc <- lift . lift . liftBase $ atomically newTChan
+		otc <- lift . lift . liftBase $ atomically newTChan
+		hlDebug t "critical" "before talkT\n"
+		void . liftBaseDiscard forkIO $
+			talkT t inc otc pre wr gn cc vch vhi gc
+		hlDebug t "critical" "after talkT\n"
+		return (inc, otc)
+	return $ HttpPushTls v ci co si so
+
 clientC :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	TVar (Maybe h) -> TVar (Maybe (String, Int, FilePath)) -> Bool ->
 	(XmlNode -> Maybe (SignedCertificate -> Bool)) ->
@@ -149,9 +174,9 @@ talk :: (ValidateHandle h, MonadBaseControl IO (HandleMonad h)) =>
 	Maybe (HandleMonad h h) ->
 	HandleMonad h (TChan (XmlNode, Bool), TChan (Maybe XmlNode))
 talk pre wr vh gn cc cs mca kcs vch vhi gc mgs = do
+	g <- liftBase (cprgCreate <$> createEntropyPool :: IO SystemRNG)
 	inc <- liftBase $ atomically newTChan
 	otc <- liftBase $ atomically newTChan
-	g <- liftBase (cprgCreate <$> createEntropyPool :: IO SystemRNG)
 	void . liftBaseDiscard forkIO $ do
 		flip (maybe (return ())) mgs $ \gs -> do
 			h <- gs
@@ -163,6 +188,17 @@ talk pre wr vh gn cc cs mca kcs vch vhi gc mgs = do
 				_ -> retry
 		(`Sv.run` g) $ do
 			t <- Sv.open h cs kcs mca
+			talkT t inc otc pre wr gn cc vch vhi gc
+	return (inc, otc)
+
+talkT :: (ValidateHandle h, MonadBase IO (HandleMonad h), CPRG g) =>
+	Sv.TlsHandle h g -> TChan (XmlNode, Bool) -> TChan (Maybe XmlNode) ->
+	[XmlNode] -> (XmlNode -> Bool) -> (XmlNode -> Maybe String) ->
+	(XmlNode -> Maybe (SignedCertificate -> Bool)) -> TVar (Maybe h) ->
+	TVar (Maybe (String, Int, FilePath)) ->
+	(XmlNode -> Maybe (HandleMonad h h, String, Int, FilePath)) ->
+	Sv.TlsM h g ()
+talkT t inc otc pre wr gn cc vch vhi gc = do
 			runPipe_ . writeToChan t inc otc pre $
 				setClient vch vhi gc =$= checkReply wr otc
 			runPipe_ . forever $ do
@@ -180,7 +216,6 @@ talk pre wr vh gn cc cs mca kcs vch vhi gc mgs = do
 					lift . putResponse t . responseP $ case mn of
 						Just n -> LBS.fromChunks [xmlString [n]]
 						_ -> "")
-	return (inc, otc)
 
 writeToChan :: (HandleLike h, MonadBase IO (HandleMonad h)) =>
 	h -> TChan a -> TChan (Maybe XmlNode) -> [XmlNode] ->

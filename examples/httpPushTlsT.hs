@@ -14,7 +14,7 @@ import TestPusher
 
 main :: IO ()
 main = do
-	soc <- listenOn $ PortNumber 80
+	soc <- listenOn $ PortNumber 443
 	ca <- readCertificateStore ["certs/cacert.sample_pem"]
 	k' <- readKey "certs/localhost.sample_key"
 	c' <- readCertificateChain ["certs/localhost.sample_crt"]

@@ -1,9 +1,16 @@
-{-# LANGUAGE TypeFamilies, FlexibleContexts, PackageImports #-}
+{-# LANGUAGE OverloadedStrings, TypeFamilies, FlexibleContexts, PackageImports #-}
 
 module Network.XmlPush.Http.Tls.Server (
+	HttpTlsSv,
+	HttpTlsSvArgs(..), Mechanism(..),
+	HttpPullTlsSvArgs(..), HttpPullSvArgs(HttpPullSvArgs),
+	HttpPushTlsArgs(..), HttpPushArgs(HttpPushArgs),
+	tlsArgsCl, tlsArgsSv,
 	) where
 
+import Control.Applicative
 import "monads-tf" Control.Monad.Error
+import Control.Monad.Base
 import Control.Monad.Trans.Control
 import Data.Maybe
 import Data.HandleLike
@@ -16,6 +23,7 @@ import Network.XmlPush.HttpPush.Tls.Body
 import Network.TigHTTP.Server
 import Network.Sasl
 import Network.PeyoTLS.Server
+import "crypto-random" Crypto.Random
 
 newtype HttpTlsSv h = HttpTlsSv (Either (HttpPullTlsSv h) (HttpPushTls h))
 
@@ -38,19 +46,23 @@ makeHttpTlsSv :: (
 	MonadError (HandleMonad h), SaslError (ErrorType (HandleMonad h))
 	) => Maybe h -> h -> (XmlNode -> Mechanism) ->
 	HttpPullTlsSvArgs h -> HttpPushTlsArgs h -> HandleMonad h (HttpTlsSv h)
-makeHttpTlsSv ch sh s pla psa = do
-	rq <- getRequest sh
-	Just [rn] <- runPipe $ requestBody rq
-		=$= xmlEvent
-		=$= convert fromJust
-		=$= xmlNode []
-		=$= toList
-	HttpTlsSv `liftM` case s rn of
-		Pull -> do
-			HttpPullTlsSvTest r w <- generate (One sh) $
-				HttpPullTlsSvTestArgs pla [rn]
-			return . Left $ HttpPullTlsSv r w
-		Push -> do
-			HttpPushTlsTest ps <- generate (Two ch (Just sh)) $
-				HttpPushTlsTestArgs psa [rn]
-			return $ Right ps
+makeHttpTlsSv ch sh s
+	(HttpPullTlsSvArgs pla' (TlsArgs gn cc cs mca kcs))
+	psa = do
+	g <- liftBase (cprgCreate <$> createEntropyPool :: IO SystemRNG)
+	(`run` g) $ do
+		t <- open sh cs kcs mca
+		rq <- getRequest t
+		Just [rn] <- runPipe $ requestBody rq
+			=$= xmlEvent
+			=$= convert fromJust
+			=$= xmlNode []
+			=$= toList
+		HttpTlsSv `liftM` case s rn of
+			Pull -> do
+				HttpPullTlsSv r w <- makeHttpPull [rn] t pla' gn cc
+				return . Left $ HttpPullTlsSv r w
+			Push -> do
+				hlDebug t "critical" "PUSH\n"
+				ps <- makeHttpPush [rn] ch t psa
+				return $ Right ps

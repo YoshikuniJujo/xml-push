@@ -15,10 +15,10 @@ main = do
 	ca <- readCertificateStore ["certs/cacert.sample_pem"]
 	k' <- readKey "certs/yoshikuni.sample_key"
 	c' <- readCertificateChain ["certs/yoshikuni.sample_crt"]
-	ch <- connectTo "localhost" $ PortNumber 80
+	ch <- connectTo "localhost" $ PortNumber 443
 	testPusher (undefined :: HttpPushTls Handle) (Two (Just ch) Nothing) (HttpPushTlsArgs
 		(HttpPushArgs (const Nothing) getServerHandle
-			(Just ("localhost", 80, "")) gtPth wntRspns)
+			(Just ("localhost", 443, "")) gtPth wntRspns)
 		(tlsArgsCl "localhost" True (const Nothing)
 			["TLS_RSA_WITH_AES_128_CBC_SHA"] ca
 			[(k', c')])

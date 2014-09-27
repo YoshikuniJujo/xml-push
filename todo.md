@@ -28,11 +28,10 @@ Unify HTTP PULL/PUSH server
 	+ [x] make it instance of XmlPush
 	+ [x] make example code
 * process TLS original problems
-
-#### todo
-
 * simplify argument
-	+ [ ] remove duplicate of TlsArgs for server
+	+ [x] remove duplicate of TlsArgs for server
 		HttpTlsServerArgs (XmlNode -> Mechanism)
 			(HttpPullSvArgs h) (HttpPushArgs h)
 			Sv.TlsArgs Cl.TlsArgs
+
+#### todo

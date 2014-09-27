@@ -8,6 +8,8 @@ import System.IO
 import Text.XML.Pipe
 import Network
 import Network.XmlPush.Http.Tls.Server
+import qualified Network.XmlPush.Tls.Server as Sv
+import qualified Network.XmlPush.Tls.Client as Cl
 import Network.PeyoTLS.ReadFile
 
 import qualified Data.ByteString.Char8 as BSC
@@ -24,9 +26,10 @@ main = do
 		(h, _, _) <- accept soc
 		void . forkIO $ testPusher
 			(undefined :: HttpTlsSv Handle) (Two Nothing $ Just h)
-			(HttpTlsSvArgs sel
-				(httpPullTlsSvArgs ca k c)
-				(httpPushTlsArgs ca k c))
+			(HttpTlsSvArgs sel httpPullSvArgs httpPushArgs
+				(tlsC ca k c) (tlsS ca k c))
+--				(httpPullTlsSvArgs ca k c)
+--				(httpPushTlsArgs ca k c))
 
 sel :: XmlNode -> Mechanism
 sel (XmlNode (_, "pull") _ _ _) = Pull
@@ -40,6 +43,13 @@ httpPullTlsSvArgs ca k c = HttpPullTlsSvArgs
 	(tlsArgsSv gtNm (const Nothing)
 		["TLS_RSA_WITH_AES_128_CBC_SHA"]
 		(Just ca) [(k, c)])
+
+httpPullSvArgs :: HttpPullSvArgs h
+httpPullSvArgs = (HttpPullSvArgs isPll endPoll needResponse)
+
+tlsS :: CertificateStore -> CertSecretKey -> CertificateChain -> Sv.TlsArgs
+tlsS ca k c = tlsArgsSv gtNm (const Nothing)
+	["TLS_RSA_WITH_AES_128_CBC_SHA"] (Just ca) [(k, c)]
 
 isPll :: XmlNode -> Bool
 isPll (XmlNode (_, "poll") _ _ _) = True
@@ -66,6 +76,13 @@ httpPushTlsArgs ca k c = HttpPushTlsArgs
 	(tlsArgsSv gtNm (const Nothing)
 		["TLS_RSA_WITH_AES_128_CBC_SHA"]
 		(Just ca) [(k, c)])
+
+httpPushArgs :: HttpPushArgs Handle
+httpPushArgs = HttpPushArgs getClientHandle Nothing Nothing gtPth wntRspns
+
+tlsC :: CertificateStore -> CertSecretKey -> CertificateChain -> Cl.TlsArgs
+tlsC ca k c= (tlsArgsCl "Yoshikuni" True checkCertXml
+	["TLS_RSA_WITH_AES_128_CBC_SHA"] ca [(k, c)])
 		
 getClientHandle :: XmlNode -> Maybe (IO Handle, String, Int, FilePath)
 getClientHandle (XmlNode (_, "client") [] [] [XmlCharData hn]) = Just (

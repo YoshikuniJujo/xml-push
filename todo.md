@@ -15,9 +15,6 @@ Unify HTTP PULL/PUSH server
 	+ [x] make response to pre
 	+ [x] make data type for test
 	+ [x] make example as test code
-
-#### todo
-
 * HTTP PUSH server
 	+ [x] move code to Body.hs
 	+ [x] add (pre :: [XmlNode]) argument to makeHttpPull
@@ -29,5 +26,13 @@ Unify HTTP PULL/PUSH server
 	+ [x] make module Network.XmlPush.Tls.Server
 	+ [x] make data type
 	+ [x] make it instance of XmlPush
-	+ [ ] make example code
+	+ [x] make example code
 * process TLS original problems
+
+#### todo
+
+* simplify argument
+	+ [ ] remove duplicate of TlsArgs for server
+		HttpTlsServerArgs (XmlNode -> Mechanism)
+			(HttpPullSvArgs h) (HttpPushArgs h)
+			Sv.TlsArgs Cl.TlsArgs

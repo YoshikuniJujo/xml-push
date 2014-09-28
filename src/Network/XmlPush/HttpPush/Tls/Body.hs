@@ -114,7 +114,6 @@ makeHttpPush pre mch t (HttpPushTlsArgs (HttpPushArgs gc gs hi gp wr)
 	(TC.TlsArgs dn cdn cc' cs ca kcs) (TS.TlsArgs gn cc cs' mca' kcs')) = do
 	vch <- lift . lift . liftBase . atomically $ newTVar mch
 	vsh <- lift . lift . liftBase . atomically $ newTVar undefined
-	hlDebug t "critical" "in makeHttpPush\n"
 	case hi of
 		Just (hn, _, _) -> when (dn /= hn) $
 			error "makeHttpPushTls: conflicted domain name"
@@ -125,10 +124,8 @@ makeHttpPush pre mch t (HttpPushTlsArgs (HttpPushArgs gc gs hi gp wr)
 	(si, so) <- do
 		inc <- lift . lift . liftBase $ atomically newTChan
 		otc <- lift . lift . liftBase $ atomically newTChan
-		hlDebug t "critical" "before talkT\n"
 		void . liftBaseDiscard forkIO $
 			talkT t inc otc pre wr gn cc vch vhi gc
-		hlDebug t "critical" "after talkT\n"
 		return (inc, otc)
 	return $ HttpPushTls v ci co si so
 

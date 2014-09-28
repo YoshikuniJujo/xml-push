@@ -5,7 +5,7 @@ module Network.XmlPush.Http.Tls.Server (
 	HttpTlsSvArgs(..), Mechanism(..),
 	HttpPullTlsSvArgs(..), HttpPullSvArgs(HttpPullSvArgs),
 	HttpPushTlsArgs(..), HttpPushArgs(HttpPushArgs),
-	tlsArgsCl, tlsArgsSv,
+	TlsArgsCl, tlsArgsCl, TlsArgsSv, tlsArgsSv,
 	) where
 
 import Control.Applicative

@@ -66,7 +66,7 @@ makeHttpTlsSv ch sh s pla' psa' tlsC tlsS@(TlsArgs gn cc cs mca kcs) = do
 				HttpPullTlsSv r w <- makeHttpPull [rn] t pla' gn cc
 				return . Left $ HttpPullTlsSv r w
 			Push -> do
-				hlDebug t "critical" "PUSH\n"
+				hlDebug t "medium" "PUSH\n"
 				ps <- makeHttpPush [rn] ch t $
 					HttpPushTlsArgs psa' tlsC tlsS
 				return $ Right ps

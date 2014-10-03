@@ -60,18 +60,29 @@ talk h ip ep ynr inc otc cn = do
 		=$= cn
 		=$= toList
 	lift . hlDebug h "medium" $
-		"\nxml-push: " `BS.append` xmlString rns `BS.append` "\n"
+		"\nxml-push: in: " `BS.append` xmlString rns `BS.append` "\n"
 	case rns of
 		[rn]	| ip rn -> (flushOr otc ep =$=) . (await >>=)
-				. maybe (return ()) $ \n -> lift . putResponse h
-					. responseP $ LBS.fromChunks [xmlString [n]]
+				. maybe (return ()) $ \n -> lift $ do
+					let rt = xmlString [n]
+					hlDebug h "medium" $ BS.concat [
+						"xml-push: out:",  rt, "\n" ]
+					putResponse h . responseP
+						$ LBS.fromChunks [rt]
 			| not $ ynr rn -> do
 				mapM_ yield rns =$= toTChan inc
-				lift . putResponse h $ responseP ""
+				lift $ do
+					hlDebug h "medium"
+						"xml-push: out: (empty)\n"
+					putResponse h $ responseP ""
 		_ -> do	mapM_ yield rns =$= toTChan inc
 			(fromTChan otc =$=) . (await >>=) . maybe (return ()) $
-				\n -> lift . putResponse h . responseP
-					$ LBS.fromChunks [xmlString [n]]
+				\n -> lift $ do
+					let rt = xmlString [n]
+					hlDebug h "medium" $ BS.concat [
+						"xml-push: out:",  rt, "\n" ]
+					putResponse h . responseP
+						$ LBS.fromChunks [rt]
 	talk h ip ep ynr inc otc cn
 
 responseP :: (HandleLike h, MonadBase IO (HandleMonad h)) =>

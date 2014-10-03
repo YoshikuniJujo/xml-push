@@ -1,4 +1,4 @@
-{-# LANGUAGE FlexibleContexts, PackageImports #-}
+{-# LANGUAGE OverloadedStrings, FlexibleContexts, PackageImports #-}
 
 module Network.XmlPush.HttpPush.Common (
 	HttpPushArgs(..),
@@ -21,6 +21,7 @@ import Network.TigHTTP.Client
 import Network.TigHTTP.Server
 import Network.TigHTTP.Types
 
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 
 data HttpPushArgs h = HttpPushArgs {
@@ -36,6 +37,12 @@ setNeedReply :: MonadBase IO m => TVar Bool -> Pipe (a, Bool) a m ()
 setNeedReply nr = await >>= maybe (return ()) (\(x, b) ->
 	lift (liftBase . atomically $ writeTVar nr b) >> yield x >> setNeedReply nr)
 
+hlDebugP :: HandleLike h => h -> (a -> BS.ByteString) -> Pipe a a (HandleMonad h) ()
+hlDebugP h shw = (await >>=) . maybe (return ()) $ \x -> do
+	lift . hlDebug h "medium" $ shw x
+	yield x
+	hlDebugP h shw
+
 clientLoop :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	h -> String -> Int -> FilePath -> (XmlNode -> FilePath) ->
 	Pipe XmlNode XmlNode (HandleMonad h) () ->
@@ -48,6 +55,9 @@ clientLoop h hn pn pt gp p = (await >>=) . maybe (return ()) $ \n -> do
 		=$= xmlEvent
 		=$= convert fromJust
 		=$= void (xmlNode [])
+		=$= hlDebugP h ((`BS.append` "\n")
+			. ("xml-push: clientLoop: " `BS.append`)
+				. xmlString . (: []))
 		=$= p
 	clientLoop h hn pn pt gp p
 

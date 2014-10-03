@@ -16,6 +16,7 @@ import Text.XML.Pipe
 import Network.TigHTTP.Server
 import Network.TigHTTP.Types
 
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 
 data HttpPullSvArgs h = HttpPullSvArgs {
@@ -51,16 +52,15 @@ talk :: (HandleLike h, MonadBase IO (HandleMonad h)) =>
 	TChan XmlNode -> TChan XmlNode -> Pipe XmlNode XmlNode (HandleMonad h) () ->
 	Pipe () () (HandleMonad h) ()
 talk h ip ep ynr inc otc cn = do
---	lift . liftBase $ putStrLn "talk begin"
 	r <- lift $ getRequest h
---	lift . liftBase $ putStrLn "getRequest done"
---	lift . liftBase . print $ requestPath r
 	rns <- requestBody r
 		=$= xmlEvent
 		=$= convert fromJust
 		=$= xmlNode []
 		=$= cn
 		=$= toList
+	lift . hlDebug h "medium" $
+		"\nxml-push: " `BS.append` xmlString rns `BS.append` "\n"
 	case rns of
 		[rn]	| ip rn -> (flushOr otc ep =$=) . (await >>=)
 				. maybe (return ()) $ \n -> lift . putResponse h

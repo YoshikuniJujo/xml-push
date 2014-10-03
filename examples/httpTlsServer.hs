@@ -1,7 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 
+import Control.Applicative
 import Control.Monad
 import Control.Concurrent
+import Data.HandleLike
 import Data.X509
 import Data.X509.CertificateStore
 import System.IO
@@ -24,8 +26,9 @@ main = do
 	c <- readCertificateChain ["certs/localhost.sample_crt"]
 	forever $ do
 		(h, _, _) <- accept soc
+		let dh = DebugHandle h (Just "medium")
 		void . forkIO $ testPusher
-			(undefined :: HttpTlsSv Handle) (Two Nothing $ Just h)
+			(undefined :: HttpTlsSv (DebugHandle Handle)) (Two Nothing $ Just dh)
 			(HttpTlsSvArgs sel httpPullSvArgs httpPushArgs
 				(tlsC ca k c) (tlsS ca k c))
 --				(httpPullTlsSvArgs ca k c)
@@ -37,7 +40,7 @@ sel (XmlNode (_, "push") _ _ _) = Push
 sel _ = error "bad"
 
 httpPullTlsSvArgs ::
-	CertificateStore -> CertSecretKey -> CertificateChain -> HttpPullTlsSvArgs h
+	CertificateStore -> CertSecretKey -> CertificateChain -> HttpPullTlsSvArgs (DebugHandle Handle)
 httpPullTlsSvArgs ca k c = HttpPullTlsSvArgs
 	(HttpPullSvArgs isPll endPoll needResponse)
 	(tlsArgsSv gtNm (const Nothing)
@@ -67,7 +70,7 @@ gtNm (XmlNode (_, "name") _ _ [XmlCharData n]) = Just $ BSC.unpack n
 gtNm _ = Nothing
 
 httpPushTlsArgs :: CertificateStore ->
-	CertSecretKey -> CertificateChain -> HttpPushTlsArgs Handle
+	CertSecretKey -> CertificateChain -> HttpPushTlsArgs (DebugHandle Handle)
 httpPushTlsArgs ca k c = HttpPushTlsArgs
 	(HttpPushArgs getClientHandle Nothing Nothing gtPth wntRspns)
 	(tlsArgsCl "Yoshikuni" True checkCertXml
@@ -77,16 +80,16 @@ httpPushTlsArgs ca k c = HttpPushTlsArgs
 		["TLS_RSA_WITH_AES_128_CBC_SHA"]
 		(Just ca) [(k, c)])
 
-httpPushArgs :: HttpPushArgs Handle
+httpPushArgs :: HttpPushArgs (DebugHandle Handle)
 httpPushArgs = HttpPushArgs getClientHandle Nothing Nothing gtPth wntRspns
 
 tlsC :: CertificateStore -> CertSecretKey -> CertificateChain -> Cl.TlsArgs
 tlsC ca k c= (tlsArgsCl "Yoshikuni" True checkCertXml
 	["TLS_RSA_WITH_AES_128_CBC_SHA"] ca [(k, c)])
 		
-getClientHandle :: XmlNode -> Maybe (IO Handle, String, Int, FilePath)
+getClientHandle :: XmlNode -> Maybe (IO (DebugHandle Handle), String, Int, FilePath)
 getClientHandle (XmlNode (_, "client") [] [] [XmlCharData hn]) = Just (
-	connectTo (BSC.unpack hn) $ PortNumber 8080,
+	flip DebugHandle (Just "medium") <$> connectTo (BSC.unpack hn) (PortNumber 8080),
 	"Yoshikuni",
 	8080,
 	"/" )

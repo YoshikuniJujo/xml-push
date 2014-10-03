@@ -32,6 +32,7 @@ import Network.PeyoTLS.Server (getCertificate)
 import Network.PeyoTLS.Client (ValidateHandle)
 import "crypto-random" Crypto.Random
 
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as LBS
 import qualified Network.PeyoTLS.Client as Cl
 import qualified Network.PeyoTLS.Server as Sv
@@ -188,6 +189,12 @@ talk pre wr vh gn cc cs mca kcs vch vhi gc mgs = do
 			talkT t inc otc pre wr gn cc vch vhi gc
 	return (inc, otc)
 
+hlDebugP :: HandleLike h => h -> (a -> BS.ByteString) -> Pipe a a (HandleMonad h) ()
+hlDebugP h shw = (await >>=) . maybe (return ()) $ \x -> do
+	lift . hlDebug h "medium" $ shw x
+	yield x
+	hlDebugP h shw
+
 talkT :: (ValidateHandle h, MonadBase IO (HandleMonad h), CPRG g) =>
 	Sv.TlsHandle h g -> TChan (XmlNode, Bool) -> TChan (Maybe XmlNode) ->
 	[XmlNode] -> (XmlNode -> Bool) -> (XmlNode -> Maybe String) ->
@@ -207,6 +214,9 @@ talkT t inc otc pre wr gn cc vch vhi gc = do
 					=$= setClient vch vhi gc
 					=$= checkCert t cc
 					=$= checkName t gn
+					=$= hlDebugP t ((`BS.append` "\n")
+						. ("xml-push: talkT: " `BS.append`)
+						. xmlString . (: []))
 					=$= checkReply wr otc
 					=$= toTChan inc
 				fromTChan otc =$= await >>= maybe (return ()) (\mn ->

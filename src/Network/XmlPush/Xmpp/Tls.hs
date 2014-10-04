@@ -18,6 +18,7 @@ import Control.Concurrent.STM
 import Data.Maybe
 import Data.HandleLike
 import Data.Pipe
+import Data.Pipe.IO
 import Data.Pipe.Flow
 import Data.Pipe.TChan
 import Text.XML.Pipe
@@ -38,7 +39,7 @@ data XmppTls h = XmppTls
 	(Pipe () Mpi (HandleMonad h) ())
 	(TChan (Either BS.ByteString XmlNode))
 
-data XmppTlsArgs h = XmppTlsArgs (XmppArgs h) TlsArgs
+data XmppTlsArgs h = XmppTlsArgs Bool (XmppArgs h) TlsArgs
 
 instance XmlPusher XmppTls where
 	type NumOfHandle XmppTls = One
@@ -55,8 +56,8 @@ makeXmppTls :: (
 	ValidateHandle h, MonadBaseControl IO (HandleMonad h),
 	MonadError (HandleMonad h), Error (ErrorType (HandleMonad h))
 	) => One h -> XmppTlsArgs h -> HandleMonad h (XmppTls h)
-makeXmppTls (One h)
-	(XmppTlsArgs (XmppArgs ms me ps you inr wr) (TlsArgs dn _ _ cs ca kcs)) = do
+makeXmppTls (One h) (XmppTlsArgs dbg
+	(XmppArgs ms me ps you inr wr) (TlsArgs dn _ _ cs ca kcs)) = do
 	nr <- liftBase $ atomically newTChan
 	wc <- liftBase $ atomically newTChan
 	(g :: SystemRNG) <- liftBase $ cprgCreate <$> createEntropyPool
@@ -73,6 +74,10 @@ makeXmppTls (One h)
 		=@= toTChan otc
 	runPipe_ $ yield (Presence tagsNull []) =$= output =$= toTChan otc
 	(>> return ()) . liftBaseDiscard forkIO . runPipe_ $ fromTChan wc
-		=$= addRandom =$= makeResponse inr you nr =$= output =$= toTChan otc
-	let	r = fromTChan inc =$= input ns
+		=$= addRandom =$= makeResponse inr you nr =$= output
+		=$= (if dbg then debug else convert id)
+		=$= toTChan otc
+	let	r = fromTChan inc
+			=$= (if dbg then debug else convert id)
+			=$= input ns
 	return $ XmppTls wr nr r wc

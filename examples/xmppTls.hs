@@ -21,6 +21,7 @@ main = do
 	k <- readKey "certs/yoshikuni.sample_key"
 	c <- readCertificateChain ["certs/yoshikuni.sample_crt"]
 	testPusher (undefined :: XmppTls Handle) (One h) (XmppTlsArgs
+		True
 		(XmppArgs ["EXTERNAL", "SCRAM-SHA-1", "DIGEST-MD5", "PLAIN"]
 			(toJid me) ps (toJid you) iNdRspns wntRspns)
 		(TlsArgs "localhost" True (const Nothing)

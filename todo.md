@@ -35,3 +35,6 @@ Unify HTTP PULL/PUSH server
 			Sv.TlsArgs Cl.TlsArgs
 
 #### todo
+
+* [ ] add debug message of HTTP PUSH output of HTTP server
+* [ ] add debug message of XMPP

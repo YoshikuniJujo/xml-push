@@ -48,16 +48,18 @@ clientLoop :: (HandleLike h, MonadBaseControl IO (HandleMonad h)) =>
 	Pipe XmlNode XmlNode (HandleMonad h) () ->
 	Pipe XmlNode XmlNode (HandleMonad h) ()
 clientLoop h hn pn pt gp p = (await >>=) . maybe (return ()) $ \n -> do
+	let rt = xmlString [n]
+	lift . hlDebug h "medium" $ BS.concat
+		["xml-push: clientLoop: out: ", rt, "\n"]
 	r <- lift . request h $ post hn pn (pt ++ "/" ++ gp n)
-		(Nothing, LBS.fromChunks [xmlString [n]])
+		(Nothing, LBS.fromChunks [rt])
+	lift $ hlDebug h "medium" "xml-push: clientLoop: in: returned\n"
 	return ()
 		=$= responseBody r
 		=$= xmlEvent
 		=$= convert fromJust
 		=$= void (xmlNode [])
-		=$= hlDebugP h ((`BS.append` "\n")
-			. ("xml-push: clientLoop: " `BS.append`)
-				. xmlString . (: []))
+		=$= hlDebugP h ((`BS.append` "\n") . xmlString . (: []))
 		=$= p
 	clientLoop h hn pn pt gp p
 

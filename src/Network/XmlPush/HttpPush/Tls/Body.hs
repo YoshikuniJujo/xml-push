@@ -215,14 +215,22 @@ talkT t inc otc pre wr gn cc vch vhi gc = do
 					=$= checkCert t cc
 					=$= checkName t gn
 					=$= hlDebugP t ((`BS.append` "\n")
-						. ("xml-push: talkT: " `BS.append`)
+						. ("xml-push: talkT: in "
+							`BS.append`)
 						. xmlString . (: []))
 					=$= checkReply wr otc
 					=$= toTChan inc
-				fromTChan otc =$= await >>= maybe (return ()) (\mn ->
-					lift . putResponse t . responseP $ case mn of
-						Just n -> LBS.fromChunks [xmlString [n]]
-						_ -> "")
+				fromTChan otc =$= await >>= maybe (return ())
+					(\mn -> do
+						let rt = case mn of
+							Just n -> xmlString [n]
+							_ -> ""
+						lift $ debugOut rt
+						lift . putResponse t . responseP $
+							LBS.fromChunks [rt])
+	where
+	debugOut rt = hlDebug t "medium" $ BS.concat [
+		"xml-push: talkT: out: ", rt, "\n"]
 
 writeToChan :: (HandleLike h, MonadBase IO (HandleMonad h)) =>
 	h -> TChan a -> TChan (Maybe XmlNode) -> [XmlNode] ->

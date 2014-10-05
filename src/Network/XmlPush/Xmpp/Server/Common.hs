@@ -101,12 +101,12 @@ setIds :: (HandleLike h, MonadBase IO (HandleMonad h)) => h ->
 	(XmlNode -> Bool) -> Jid -> TChan BS.ByteString ->
 	Pipe Mpi Mpi (HandleMonad h) ()
 setIds h ynr you rids = (await >>=) . maybe (return ()) $ \mpi -> do
-	yield mpi
 	if boolXmlNode ynr mpi
 	then when (isGetSet mpi) . lift . liftBase . atomically
 		$ writeTChan rids (fromJust $ getId mpi)
 	else lift $ returnEmpty h (fromJust $ getId mpi) you
 	lift . hlDebug h "medium" . BSC.pack $ "\nsetIds: " ++ show (getId mpi)
+	yield mpi
 	setIds h ynr you rids
 
 isGetSet :: Mpi -> Bool

@@ -12,7 +12,7 @@ import Network.PeyoTLS.ReadFile
 
 import Network.XmlPush
 import Network.XmlPush.Xmpp.Tls.Server
-import TestPusher
+import TestPusherT
 
 main :: IO ()
 main = do
